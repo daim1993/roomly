@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#171a24">
+    <meta name="description" content="Roomly browser audio and video meetings">
+    <title>Roomly - Meet in your browser</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <svg class="svg-definitions" aria-hidden="true">
+      <symbol id="icon-logo" viewBox="0 0 32 32">
+        <path d="M7.5 8.5h11a5 5 0 0 1 5 5v10h-11a5 5 0 0 1-5-5v-10Z" fill="currentColor" stroke="none"/>
+        <path d="m23.5 14 5-3v10l-5-3" fill="currentColor" stroke="none"/>
+      </symbol>
+      <symbol id="icon-mic" viewBox="0 0 24 24">
+        <rect x="9" y="3" width="6" height="11" rx="3"/>
+        <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6"/>
+      </symbol>
+      <symbol id="icon-mic-off" viewBox="0 0 24 24">
+        <path d="M9 8V6a3 3 0 0 1 5.7-1.3M15 10.5V11a3 3 0 0 1-4.2 2.75M6 10.5v1a6 6 0 0 0 9.2 5.07M18 11.5a6 6 0 0 1-.45 2.28M12 17.5V21M9 21h6M3 3l18 18"/>
+      </symbol>
+      <symbol id="icon-camera" viewBox="0 0 24 24">
+        <rect x="3" y="6" width="13" height="12" rx="2"/>
+        <path d="m16 10 5-3v10l-5-3"/>
+      </symbol>
+      <symbol id="icon-camera-off" viewBox="0 0 24 24">
+        <path d="M10.7 6H14a2 2 0 0 1 2 2v3M16 15.5v.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8c0-.5.2-1 .5-1.3M16 10l5-3v10l-2.5-1.5M3 3l18 18"/>
+      </symbol>
+      <symbol id="icon-link" viewBox="0 0 24 24">
+        <path d="m9.5 14.5 5-5M7 17H5a4 4 0 0 1 0-8h3M17 7h2a4 4 0 0 1 0 8h-3"/>
+      </symbol>
+      <symbol id="icon-phone" viewBox="0 0 24 24">
+        <path d="M4 15.5c5.3-4.7 10.7-4.7 16 0l-3 3-3-2.5a7 7 0 0 0-4 0L7 18.5l-3-3Z"/>
+      </symbol>
+      <symbol id="icon-users" viewBox="0 0 24 24">
+        <circle cx="9" cy="8" r="3"/>
+        <path d="M3.5 19v-1.5A4.5 4.5 0 0 1 8 13h2a4.5 4.5 0 0 1 4.5 4.5V19M15.5 5.3a3 3 0 0 1 0 5.4M17 13a4.5 4.5 0 0 1 3.5 4.4V19"/>
+      </symbol>
+      <symbol id="icon-lock" viewBox="0 0 24 24">
+        <rect x="5" y="10" width="14" height="11" rx="2"/>
+        <path d="M8.5 10V7.5a3.5 3.5 0 0 1 7 0V10"/>
+      </symbol>
+      <symbol id="icon-refresh" viewBox="0 0 24 24">
+        <path d="M20 7v5h-5M4 17v-5h5M18.5 9A7 7 0 0 0 6 7M5.5 15A7 7 0 0 0 18 17"/>
+      </symbol>
+    </svg>
+
+    <main id="prejoinView" class="prejoin-view">
+      <div class="orb orb-one"></div>
+      <div class="orb orb-two"></div>
+
+      <header class="site-header">
+        <a class="brand" href="/" aria-label="Roomly home">
+          <span class="brand-mark"><svg><use href="#icon-logo"></use></svg></span>
+          <span>roomly</span>
+        </a>
+        <span class="privacy-pill">
+          <svg><use href="#icon-lock"></use></svg>
+          No account needed
+        </span>
+      </header>
+
+      <section class="join-layout" aria-labelledby="joinTitle">
+        <div class="join-panel">
+          <p class="eyebrow"><span></span> Open room meetings</p>
+          <h1 id="joinTitle">Show up your way.</h1>
+          <p class="intro">Start with your camera, or keep it voice-only. Share one link and meet directly in the browser.</p>
+
+          <form id="joinForm" novalidate>
+            <div class="field-group">
+              <label for="nameInput">Your name</label>
+              <input id="nameInput" name="name" type="text" maxlength="40" autocomplete="name" placeholder="How should people see you?" required>
+            </div>
+
+            <div class="field-group">
+              <label for="roomInput">Room code</label>
+              <div class="room-input-wrap">
+                <input id="roomInput" name="room" type="text" maxlength="48" spellcheck="false" autocomplete="off" placeholder="room-code" required>
+                <button id="newRoomButton" class="inline-button" type="button" title="Generate a new room code">
+                  <svg><use href="#icon-refresh"></use></svg>
+                  New code
+                </button>
+              </div>
+            </div>
+
+            <fieldset class="mode-fieldset">
+              <legend>How do you want to join?</legend>
+              <div class="mode-options">
+                <button class="mode-option" type="button" data-mode="audio" aria-pressed="false">
+                  <span class="mode-icon"><svg><use href="#icon-mic"></use></svg></span>
+                  <span><strong>Voice only</strong><small>Microphone, no camera</small></span>
+                  <span class="selection-dot"></span>
+                </button>
+                <button class="mode-option is-selected" type="button" data-mode="video" aria-pressed="true">
+                  <span class="mode-icon"><svg><use href="#icon-camera"></use></svg></span>
+                  <span><strong>Voice + camera</strong><small>Meet face to face</small></span>
+                  <span class="selection-dot"></span>
+                </button>
+              </div>
+            </fieldset>
+
+            <button id="joinButton" class="join-button" type="submit">
+              <span id="joinButtonLabel">Enter the room</span>
+              <span class="button-arrow" aria-hidden="true">&#8594;</span>
+            </button>
+            <p id="joinError" class="form-error" role="alert"></p>
+          </form>
+        </div>
+
+        <aside class="preview-card" aria-label="Camera preview">
+          <div class="preview-header">
+            <span>Your preview</span>
+            <span class="local-badge"><i></i> Only you</span>
+          </div>
+          <div id="previewStage" class="preview-stage">
+            <video id="previewVideo" autoplay muted playsinline></video>
+            <div class="preview-avatar" id="previewAvatar">Y</div>
+            <div class="preview-shade"></div>
+            <div class="preview-label" id="previewLabel">You</div>
+            <div class="preview-statuses">
+              <span id="previewMicStatus"><svg><use href="#icon-mic"></use></svg> Mic on</span>
+              <span id="previewCameraStatus"><svg><use href="#icon-camera"></use></svg> Camera on</span>
+            </div>
+          </div>
+          <p id="permissionHint" class="permission-hint">Your media stays on this device until you enter.</p>
+        </aside>
+      </section>
+    </main>
+
+    <main id="meetingView" class="meeting-view" hidden>
+      <header class="meeting-header">
+        <div class="meeting-brand-group">
+          <a class="brand brand-dark" href="/" aria-label="Roomly home">
+            <span class="brand-mark"><svg><use href="#icon-logo"></use></svg></span>
+            <span>roomly</span>
+          </a>
+          <span class="header-divider"></span>
+          <div>
+            <strong id="meetingRoomName">Room</strong>
+            <span id="elapsedTime">00:00</span>
+          </div>
+        </div>
+        <div class="meeting-meta">
+          <span class="encrypted-label"><svg><use href="#icon-lock"></use></svg> Peer to peer</span>
+          <span class="participant-count"><svg><use href="#icon-users"></use></svg><b id="participantCount">1</b></span>
+        </div>
+      </header>
+
+      <section id="videoGrid" class="video-grid" data-count="1" aria-label="Meeting participants"></section>
+
+      <div id="connectionBanner" class="connection-banner" role="status" hidden>
+        The room connection was lost. Leave and rejoin to reconnect.
+      </div>
+
+      <footer class="meeting-controls" aria-label="Meeting controls">
+        <div class="room-code-block">
+          <span>ROOM</span>
+          <strong id="roomCodeDisplay"></strong>
+        </div>
+        <div class="control-dock">
+          <button id="micButton" class="control-button" type="button" aria-label="Turn microphone off" aria-pressed="true">
+            <svg class="control-icon icon-on"><use href="#icon-mic"></use></svg>
+            <svg class="control-icon icon-off"><use href="#icon-mic-off"></use></svg>
+            <span>Mic</span><kbd>M</kbd>
+          </button>
+          <button id="cameraButton" class="control-button" type="button" aria-label="Turn camera off" aria-pressed="true">
+            <svg class="control-icon icon-on"><use href="#icon-camera"></use></svg>
+            <svg class="control-icon icon-off"><use href="#icon-camera-off"></use></svg>
+            <span>Camera</span><kbd>V</kbd>
+          </button>
+          <button id="inviteButton" class="control-button invite-control" type="button" aria-label="Copy invitation link">
+            <svg class="control-icon"><use href="#icon-link"></use></svg>
+            <span>Invite</span>
+          </button>
+          <button id="leaveButton" class="control-button leave-control" type="button" aria-label="Leave meeting">
+            <svg class="control-icon"><use href="#icon-phone"></use></svg>
+            <span>Leave</span>
+          </button>
+        </div>
+        <div class="connection-quality"><i></i> Live</div>
+      </footer>
+    </main>
+
+    <template id="participantTemplate">
+      <article class="participant-tile">
+        <video autoplay playsinline></video>
+        <div class="tile-avatar"></div>
+        <span class="tile-connection">Connecting</span>
+        <div class="tile-gradient"></div>
+        <footer class="tile-footer">
+          <span class="tile-name"></span>
+          <span class="tile-mic" aria-label="Microphone on">
+            <svg class="mic-on"><use href="#icon-mic"></use></svg>
+            <svg class="mic-off"><use href="#icon-mic-off"></use></svg>
+          </span>
+        </footer>
+      </article>
+    </template>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

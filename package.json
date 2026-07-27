@@ -1,0 +1,18 @@
+{
+  "name": "roomly-meet",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A small browser-to-browser audio and video meeting app",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --check server.js && node --check app.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}
