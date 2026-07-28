@@ -379,6 +379,14 @@ function renderMeBar() {
   ui.meAvatar.textContent = initials(me.name);
   ui.meName.textContent = me.name;
   ui.meTag.textContent = me.guest ? 'Guest' : `@${me.username}`;
+  const hpAvatar = document.getElementById('hpAvatar');
+  if (hpAvatar) {
+    hpAvatar.className = `avatar c${me.color || 1}`;
+    hpAvatar.textContent = initials(me.name);
+    document.getElementById('hpName').textContent = me.name;
+    document.getElementById('hpRole').textContent =
+      me.guest ? 'Guest' : (me.platformAdmin ? 'Platform admin' : 'Online');
+  }
 }
 
 function renderSidebar() {
