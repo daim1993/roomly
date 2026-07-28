@@ -173,6 +173,10 @@
           <path d="m16.4 7.6 4.6 4.4-4.6 4.4V7.6Z"/>
         </g>
       </symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24">
+        <path d="M12 2.8c3.5 0 6 2.6 6 6.2v3l1.6 3a1.2 1.2 0 0 1-1 1.8H5.4a1.2 1.2 0 0 1-1-1.8l1.6-3v-3c0-3.6 2.5-6.2 6-6.2Z" fill="currentColor" stroke="none"/>
+        <path d="M9.6 19.6a2.5 2.5 0 0 0 4.8 0" fill="none" stroke="currentColor" stroke-width="2.2"/>
+      </symbol>
       <symbol id="i-expand" viewBox="0 0 24 24">
         <path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5" fill="none" stroke="currentColor" stroke-width="2.5"/>
       </symbol>
@@ -266,18 +270,28 @@
     <div id="appView" class="app-view" hidden>
       <!-- Sidebar: server strip on top, channels below -->
       <aside class="sidebar">
-        <nav id="serverRail" class="server-rail" aria-label="Servers">
-          <button id="homeButton" class="rail-item rail-home is-active" type="button" title="Home &amp; direct messages" aria-label="Home and direct messages">
-            <svg><use href="#i-logo"></use></svg>
-            <span class="rail-badge" hidden></span>
-          </button>
-          <div class="rail-divider"></div>
-          <div id="railServers" class="rail-servers"></div>
-          <button id="addServerButton" class="rail-item rail-add" type="button" title="Add a server" aria-label="Add a server">
-            <svg><use href="#i-plus"></use></svg>
-          </button>
-        </nav>
-        <header id="sidebarHeader" class="sidebar-header">
+        <header class="side-profile">
+          <span id="meAvatar" class="avatar c1">R</span>
+          <span class="side-profile-text">
+            <strong id="meName">—</strong>
+            <small id="meTag">—</small>
+          </span>
+          <span class="side-profile-actions">
+            <button id="addServerButton" class="icon-button" type="button" title="Add a server" aria-label="Add a server">
+              <svg><use href="#i-plus"></use></svg>
+            </button>
+            <button id="settingsButton" class="icon-button" type="button" aria-label="User settings">
+              <svg><use href="#i-settings"></use></svg>
+            </button>
+          </span>
+        </header>
+
+        <div class="side-search">
+          <svg><use href="#i-search"></use></svg>
+          <input id="sideSearch" type="search" placeholder="Search spaces &amp; people" autocomplete="off">
+        </div>
+
+        <header id="sidebarHeader" class="sidebar-header" aria-hidden="true">
           <strong id="sidebarTitle">Direct messages</strong>
           <button id="serverMenuButton" class="icon-button" type="button" aria-label="Server settings" hidden>
             <svg><use href="#i-dots"></use></svg>
@@ -285,12 +299,26 @@
         </header>
 
         <div id="sidebarScroll" class="sidebar-scroll">
-          <!-- home mode -->
+          <p class="side-label">Overview</p>
+          <nav id="serverRail" class="server-rail" aria-label="Servers">
+            <div class="rail-row">
+              <button id="homeButton" class="rail-item rail-home is-active" type="button" title="Home &amp; direct messages" aria-label="Home and direct messages">
+                <span class="rail-ic"><svg><use href="#i-home"></use></svg></span>
+                <span class="rail-name">Home</span>
+                <span class="rail-badge" hidden></span>
+              </button>
+            </div>
+            <div id="railServers" class="rail-servers"></div>
+          </nav>
+          <button id="sideCreateBoard" class="side-link" type="button">
+            <svg><use href="#i-plus"></use></svg> Create new server
+          </button>
+
+          <p class="side-label">Direct messages</p>
           <div id="dmPane" class="dm-pane">
             <button id="findUserButton" class="sidebar-action" type="button">
               <svg><use href="#i-search"></use></svg> Find someone by username
             </button>
-            <p class="sidebar-label">Direct messages</p>
             <div id="dmList" class="dm-list"></div>
             <p id="dmEmpty" class="sidebar-empty">No conversations yet. Find someone by username, or click a member in any server.</p>
           </div>
@@ -340,21 +368,14 @@
           </div>
         </div>
 
-        <!-- Me bar -->
-        <footer class="user-bar">
-          <div class="user-bar-id">
-            <span id="meAvatar" class="avatar c1">R</span>
-            <span class="user-bar-text">
-              <strong id="meName">—</strong>
-              <small id="meTag">—</small>
-            </span>
-          </div>
-          <div class="user-bar-actions">
-            <button id="settingsButton" class="icon-button" type="button" aria-label="User settings">
-              <svg><use href="#i-settings"></use></svg>
-            </button>
-          </div>
-        </footer>
+        <!-- Add-a-server card -->
+        <div class="side-add-card">
+          <button id="sideAddProject" class="side-add-main" type="button">
+            <span class="side-add-plus"><svg><use href="#i-plus"></use></svg></span>
+            Add new server
+          </button>
+          <button id="sideJoinLink" class="side-add-sub" type="button">or join with an invite link</button>
+        </div>
       </aside>
 
       <!-- Main -->
@@ -365,23 +386,32 @@
           </button>
           <span id="channelIcon" class="channel-icon"><svg><use href="#i-hash"></use></svg></span>
           <div class="main-header-text">
-            <strong id="channelTitle">Welcome</strong>
+            <div class="mh-row">
+              <strong id="channelTitle">Welcome</strong>
+              <div id="headerFaces" class="header-faces" hidden></div>
+              <button id="headerInviteMini" class="hf-plus" type="button" title="Invite people" aria-label="Invite people" hidden>
+                <svg><use href="#i-plus"></use></svg>
+              </button>
+            </div>
             <span id="channelTopic"></span>
           </div>
           <div class="main-header-actions">
             <button id="voiceChatButton" class="icon-button" type="button" aria-label="Toggle channel chat" aria-pressed="false" hidden>
               <svg><use href="#i-hash"></use></svg>
             </button>
-            <button id="invitePeopleButton" class="ghost-button small" type="button" hidden>
-              <svg><use href="#i-link"></use></svg> Invite
+            <button id="mentionBell" class="icon-button bell-button" type="button" aria-label="Mentions">
+              <svg><use href="#i-bell"></use></svg>
+              <b id="bellBadge" class="mnav-badge" hidden></b>
+            </button>
+            <button id="invitePeopleButton" class="ghost-button small share-button" type="button" hidden>
+              <svg><use href="#i-users"></use></svg> Share
+            </button>
+            <button id="copyLinkButton" class="ghost-button small" type="button" hidden>
+              <svg><use href="#i-link"></use></svg> Link
             </button>
             <button id="toggleMembersButton" class="icon-button" type="button" aria-label="Toggle member list" aria-pressed="true" hidden>
               <svg><use href="#i-users"></use></svg>
             </button>
-            <div id="headerProfile" class="header-profile">
-              <span id="hpAvatar" class="avatar c1">·</span>
-              <span class="hp-text"><strong id="hpName">—</strong><small id="hpRole">Online</small></span>
-            </div>
           </div>
         </header>
 

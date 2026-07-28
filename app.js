@@ -45,6 +45,15 @@ const ui = {
   meName: $('#meName'),
   meTag: $('#meTag'),
   settingsButton: $('#settingsButton'),
+  sideSearch: $('#sideSearch'),
+  sideCreateBoard: $('#sideCreateBoard'),
+  sideAddProject: $('#sideAddProject'),
+  sideJoinLink: $('#sideJoinLink'),
+  headerFaces: $('#headerFaces'),
+  headerInviteMini: $('#headerInviteMini'),
+  copyLinkButton: $('#copyLinkButton'),
+  mentionBell: $('#mentionBell'),
+  bellBadge: $('#bellBadge'),
   appViewEl: $('#appView'),
   backButton: $('#backButton'),
   mobileNav: $('#mobileNav'),
@@ -354,22 +363,93 @@ function renderRail() {
 
   ui.railServers.replaceChildren();
   const servers = Array.from(state.servers.values()).sort((a, b) => a.createdAt - b.createdAt);
+  const activeServerId =
+    (state.view.kind === 'text' || state.view.kind === 'voice') ? state.view.serverId : null;
+  let placedTree = false;
   for (const server of servers) {
     const mentions = serverMentionCount(server);
+    const active = server.id === activeServerId;
     const button = el('button', {
       class: 'rail-item',
       type: 'button',
       title: server.temp ? `${server.name} · temporary` : server.name,
       dataset: { serverId: server.id },
       onclick: () => openServer(server.id)
-    }, server.icon || initials(server.name));
-    button.classList.toggle('is-active',
-      (state.view.kind === 'text' || state.view.kind === 'voice') && state.view.serverId === server.id);
+    },
+      el('span', { class: 'rail-ic', text: server.icon || initials(server.name) }),
+      el('span', { class: 'rail-name', text: server.name })
+    );
+    button.classList.toggle('is-active', active);
     button.classList.toggle('has-unread', serverHasUnread(server));
     if (mentions) {
       button.append(el('span', { class: 'rail-badge', text: mentions > 99 ? '99+' : String(mentions) }));
     }
-    ui.railServers.append(button);
+    const row = el('div', { class: 'rail-row' }, button);
+    ui.railServers.append(row);
+    if (active) {
+      row.append(ui.serverMenuButton); // ⋮ rides on the active row
+      ui.railServers.append(ui.channelPane); // channel tree nests underneath
+      placedTree = true;
+    }
+  }
+  if (!placedTree) {
+    // Keep both nodes attached (and querySelector-able) even with no server open.
+    ui.railServers.append(ui.channelPane);
+    const header = document.getElementById('sidebarHeader');
+    if (header) {
+      header.append(ui.serverMenuButton);
+    }
+  }
+  updateBell();
+  applySidebarFilter();
+}
+
+function updateBell() {
+  if (!ui.mentionBell) {
+    return;
+  }
+  let total = 0;
+  for (const count of Object.values(state.mentions)) {
+    total += count || 0;
+  }
+  ui.bellBadge.hidden = !total;
+  ui.bellBadge.textContent = total > 99 ? '99+' : String(total);
+}
+
+function jumpToMentions() {
+  const entry = Object.entries(state.mentions).find(([, count]) => count > 0);
+  if (!entry) {
+    toast("You're all caught up.");
+    return;
+  }
+  const key = entry[0];
+  if (key.startsWith('dm:')) {
+    openDm(key.slice(3));
+    return;
+  }
+  const [, serverId, channelId] = key.split(':');
+  const channel = getChannel(serverId, channelId);
+  if (channel) {
+    setView({ kind: channel.type === 'voice' ? 'voice' : 'text', serverId, channelId });
+  }
+}
+
+function applySidebarFilter() {
+  if (!ui.sideSearch) {
+    return;
+  }
+  const query = ui.sideSearch.value.trim().toLowerCase();
+  const apply = (node) => {
+    node.style.display = !query || node.textContent.toLowerCase().includes(query) ? '' : 'none';
+  };
+  for (const row of ui.railServers.querySelectorAll('.rail-row')) {
+    apply(row);
+  }
+  for (const item of ui.channelPane.querySelectorAll('.channel-item')) {
+    apply(item);
+  }
+  for (const item of ui.dmList.querySelectorAll('.dm-item')) {
+    apply(item);
   }
 }
 
@@ -402,13 +482,13 @@ function renderSidebar() {
   const inServer = state.view.kind === 'text' || state.view.kind === 'voice';
   const server = inServer ? getServer(state.view.serverId) : null;
 
-  ui.dmPane.hidden = Boolean(server);
+  ui.dmPane.hidden = false; // unified sidebar: DMs are always listed
   ui.channelPane.hidden = !server;
   ui.serverMenuButton.hidden = !server;
   ui.sidebarTitle.textContent = server ? server.name : 'Direct messages';
 
+  renderDmList();
   if (!server) {
-    renderDmList();
     return;
   }
 
@@ -692,8 +772,12 @@ function renderMainView() {
     const channel = getChannel(view.serverId, view.channelId);
     ui.channelIcon.replaceChildren(icon(view.kind === 'voice' ? 'i-speaker' : 'i-hash'));
     ui.channelTitle.textContent = channel ? channel.name : '';
-    ui.channelTopic.textContent = channel ? channel.topic || '' : '';
+    const crumbs = server && channel ? `${server.name} / ${channel.name}` : '';
+    ui.channelTopic.textContent = channel && channel.topic ? `${crumbs} — ${channel.topic}` : crumbs;
   }
+
+  ui.copyLinkButton.hidden = !server;
+  renderHeaderFaces(server);
 
   if (view.kind === 'text' || view.kind === 'dm' || view.kind === 'voice') {
     ui.composerInput.placeholder = view.kind === 'dm'
@@ -703,6 +787,24 @@ function renderMainView() {
 
   renderMembers();
   renderVoiceView();
+}
+
+function renderHeaderFaces(server) {
+  if (!ui.headerFaces) {
+    return;
+  }
+  ui.headerFaces.hidden = !server;
+  ui.headerInviteMini.hidden = !server;
+  if (!server) {
+    return;
+  }
+  ui.headerFaces.replaceChildren();
+  for (const member of server.members.slice(0, 4)) {
+    ui.headerFaces.append(avatarEl(getUser(member.userId), 'hf-face'));
+  }
+  if (server.members.length > 4) {
+    ui.headerFaces.append(el('span', { class: 'hf-more', text: `+${server.members.length - 4}` }));
+  }
 }
 
 function renderMembers() {
@@ -3326,6 +3428,35 @@ function wireUi() {
   ui.homeJoinServer.addEventListener('click', () => openAddServerModal('join'));
   ui.findUserButton.addEventListener('click', openFindUserModal);
   ui.settingsButton.addEventListener('click', () => openUserSettings('profile'));
+  ui.sideSearch.addEventListener('input', applySidebarFilter);
+  ui.sideCreateBoard.addEventListener('click', () => ui.addServerButton.click());
+  ui.sideAddProject.addEventListener('click', () => ui.addServerButton.click());
+  ui.sideJoinLink.addEventListener('click', () => {
+    const join = document.getElementById('homeJoinServer');
+    if (join) {
+      join.click();
+    }
+  });
+  ui.mentionBell.addEventListener('click', jumpToMentions);
+  ui.headerFaces.addEventListener('click', () => {
+    if (!ui.toggleMembersButton.hidden) {
+      ui.toggleMembersButton.click();
+    }
+  });
+  ui.headerInviteMini.addEventListener('click', () => {
+    const server = getServer(state.view.serverId);
+    if (server) {
+      openInviteModal(server);
+    }
+  });
+  ui.copyLinkButton.addEventListener('click', async () => {
+    const server = getServer(state.view.serverId);
+    if (!server) {
+      return;
+    }
+    const ok = await copyText(`${location.origin}/invite/${server.inviteCode}`);
+    toast(ok ? 'Invite link copied.' : 'Could not copy the link.', !ok);
+  });
   ui.meAvatar.style.cursor = 'pointer';
   ui.meAvatar.setAttribute('role', 'button');
   ui.meAvatar.setAttribute('tabindex', '0');
