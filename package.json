@@ -1,13 +1,13 @@
 {
-  "name": "roomly-meet",
-  "version": "1.0.0",
+  "name": "roomly",
+  "version": "2.0.0",
   "private": true,
-  "description": "A small browser-to-browser audio and video meeting app",
+  "description": "Self-hosted Discord-style platform: servers, text + voice/video channels, screen share, DMs, roles",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --check server.js && node --check app.js"
+    "test": "node --check server.js && node --check lib/store.js && node --check lib/auth.js && node --check lib/hub.js"
   },
   "engines": {
     "node": ">=18"

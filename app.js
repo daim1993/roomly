@@ -1,875 +1,2827 @@
 'use strict';
 
-const elements = {
-  prejoinView: document.querySelector('#prejoinView'),
-  meetingView: document.querySelector('#meetingView'),
-  joinForm: document.querySelector('#joinForm'),
-  nameInput: document.querySelector('#nameInput'),
-  roomInput: document.querySelector('#roomInput'),
-  newRoomButton: document.querySelector('#newRoomButton'),
-  modeButtons: Array.from(document.querySelectorAll('.mode-option')),
-  joinButton: document.querySelector('#joinButton'),
-  joinButtonLabel: document.querySelector('#joinButtonLabel'),
-  joinError: document.querySelector('#joinError'),
-  previewStage: document.querySelector('#previewStage'),
-  previewVideo: document.querySelector('#previewVideo'),
-  previewAvatar: document.querySelector('#previewAvatar'),
-  previewLabel: document.querySelector('#previewLabel'),
-  previewMicStatus: document.querySelector('#previewMicStatus'),
-  previewCameraStatus: document.querySelector('#previewCameraStatus'),
-  permissionHint: document.querySelector('#permissionHint'),
-  meetingRoomName: document.querySelector('#meetingRoomName'),
-  elapsedTime: document.querySelector('#elapsedTime'),
-  participantCount: document.querySelector('#participantCount'),
-  videoGrid: document.querySelector('#videoGrid'),
-  roomCodeDisplay: document.querySelector('#roomCodeDisplay'),
-  micButton: document.querySelector('#micButton'),
-  cameraButton: document.querySelector('#cameraButton'),
-  inviteButton: document.querySelector('#inviteButton'),
-  leaveButton: document.querySelector('#leaveButton'),
-  connectionBanner: document.querySelector('#connectionBanner'),
-  participantTemplate: document.querySelector('#participantTemplate'),
-  toast: document.querySelector('#toast')
-};
+/**
+ * Roomly client application.
+ * State lives here; js/ modules provide the socket, WebRTC engine, rendering
+ * helpers and emoji data. Everything renders from state — the server's
+ * `ready` snapshot (sent on every [re]connect) is the source of truth.
+ */
 
-const defaultRtcConfiguration = {
-  iceServers: [
-    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }
-  ]
+import { el, icon, initials, avatarEl, formatTime, formatDay, formatFull, formatBytes, sameDay, toast, copyText, beep, debounce } from '/js/util.js';
+import { EMOJI_GROUPS, QUICK_REACTIONS } from '/js/emoji.js';
+import { renderContent, contentPreview } from '/js/markdown.js';
+import { RoomlySocket } from '/js/socket.js';
+import { VoiceManager } from '/js/rtc.js';
+
+const $ = (selector) => document.querySelector(selector);
+
+const ui = {
+  authView: $('#authView'),
+  appView: $('#appView'),
+  authInviteNote: $('#authInviteNote'),
+  railServers: $('#railServers'),
+  homeButton: $('#homeButton'),
+  addServerButton: $('#addServerButton'),
+  sidebarTitle: $('#sidebarTitle'),
+  serverMenuButton: $('#serverMenuButton'),
+  dmPane: $('#dmPane'),
+  dmList: $('#dmList'),
+  dmEmpty: $('#dmEmpty'),
+  findUserButton: $('#findUserButton'),
+  channelPane: $('#channelPane'),
+  textChannelList: $('#textChannelList'),
+  voiceChannelList: $('#voiceChannelList'),
+  addTextChannelButton: $('#addTextChannelButton'),
+  addVoiceChannelButton: $('#addVoiceChannelButton'),
+  voiceDock: $('#voiceDock'),
+  voiceDockStatus: $('#voiceDockStatus'),
+  voiceDockName: $('#voiceDockName'),
+  voiceDockLeave: $('#voiceDockLeave'),
+  dockMicButton: $('#dockMicButton'),
+  dockCamButton: $('#dockCamButton'),
+  dockScreenButton: $('#dockScreenButton'),
+  meAvatar: $('#meAvatar'),
+  meName: $('#meName'),
+  meTag: $('#meTag'),
+  settingsButton: $('#settingsButton'),
+  channelIcon: $('#channelIcon'),
+  channelTitle: $('#channelTitle'),
+  channelTopic: $('#channelTopic'),
+  invitePeopleButton: $('#invitePeopleButton'),
+  toggleMembersButton: $('#toggleMembersButton'),
+  chatView: $('#chatView'),
+  messageScroll: $('#messageScroll'),
+  messageList: $('#messageList'),
+  chatIntro: $('#chatIntro'),
+  loadOlderButton: $('#loadOlderButton'),
+  typingBar: $('#typingBar'),
+  replyBar: $('#replyBar'),
+  replyBarName: $('#replyBarName'),
+  replyBarCancel: $('#replyBarCancel'),
+  attachPreview: $('#attachPreview'),
+  composerInput: $('#composerInput'),
+  attachButton: $('#attachButton'),
+  emojiButton: $('#emojiButton'),
+  sendButton: $('#sendButton'),
+  fileInput: $('#fileInput'),
+  voiceView: $('#voiceView'),
+  voicePrejoin: $('#voicePrejoin'),
+  voicePrejoinTitle: $('#voicePrejoinTitle'),
+  voicePrejoinCount: $('#voicePrejoinCount'),
+  voicePrejoinFaces: $('#voicePrejoinFaces'),
+  voiceJoinButton: $('#voiceJoinButton'),
+  voiceJoinMicButton: $('#voiceJoinMicButton'),
+  voiceStage: $('#voiceStage'),
+  voiceGrid: $('#voiceGrid'),
+  screenStage: $('#screenStage'),
+  screenVideo: $('#screenVideo'),
+  screenLabel: $('#screenLabel'),
+  screenSelfNote: $('#screenSelfNote'),
+  screenSelfStop: $('#screenSelfStop'),
+  sharePill: $('#sharePill'),
+  vMicButton: $('#vMicButton'),
+  vCamButton: $('#vCamButton'),
+  vScreenButton: $('#vScreenButton'),
+  vLeaveButton: $('#vLeaveButton'),
+  homeView: $('#homeView'),
+  homeGreeting: $('#homeGreeting'),
+  homeSub: $('#homeSub'),
+  homeServerCards: $('#homeServerCards'),
+  homeCreateServer: $('#homeCreateServer'),
+  homeJoinServer: $('#homeJoinServer'),
+  memberPanel: $('#memberPanel'),
+  memberList: $('#memberList'),
+  modalRoot: $('#modalRoot'),
+  modalCard: $('#modalCard'),
+  popover: $('#popover'),
+  emojiPopup: $('#emojiPopup'),
+  mentionPopup: $('#mentionPopup'),
+  connBanner: $('#connBanner'),
+  lightbox: $('#lightbox')
 };
 
 const state = {
-  mode: 'video',
-  roomId: '',
-  displayName: '',
-  localStream: new MediaStream(),
-  mediaQueue: Promise.resolve(),
-  socket: null,
-  selfId: null,
-  peers: new Map(),
-  rtcConfiguration: defaultRtcConfiguration,
-  joining: false,
-  joined: false,
-  intentionalClose: false,
-  joinResolve: null,
-  joinReject: null,
-  joinTimeout: null,
-  startedAt: null,
-  timer: null
+  me: null,
+  connId: null,
+  servers: new Map(),
+  dms: new Map(),
+  users: new Map(),
+  online: new Set(),
+  lastRead: {},
+  mentions: {},
+  voiceStates: new Map(), // channelKey -> participants[]
+  voiceLimit: 12,
+  messages: new Map(), // channelKey -> {list, hasMore, loaded}
+  typing: new Map(), // channelKey -> Map<userId, expiresAt>
+  view: { kind: 'home' },
+  memberPanelOpen: true,
+  replyTo: null,
+  editingId: null,
+  pendingAttachments: [],
+  mentionTokens: new Map(), // display name -> userId (composer session)
+  focusedScreen: null,
+  pendingInvite: null,
+  booted: false
 };
 
-const roomWords = {
-  first: ['amber', 'brisk', 'calm', 'clear', 'coral', 'fresh', 'gold', 'kind', 'lucky', 'mint', 'open', 'quiet', 'rapid', 'solar', 'warm'],
-  second: ['bird', 'brook', 'cloud', 'field', 'grove', 'harbor', 'leaf', 'moon', 'orbit', 'pine', 'river', 'spark', 'stone', 'wave', 'willow']
-};
-
-let toastTimer;
-
-function randomItem(items) {
-  const values = new Uint32Array(1);
-  crypto.getRandomValues(values);
-  return items[values[0] % items.length];
-}
-
-function generateRoomId() {
-  const values = new Uint32Array(1);
-  crypto.getRandomValues(values);
-  return `${randomItem(roomWords.first)}-${randomItem(roomWords.second)}-${100 + (values[0] % 900)}`;
-}
-
-function normalizeRoomId(value) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 48);
-}
-
-function getInitials(name) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) {
-    return 'Y';
+const socket = new RoomlySocket();
+const voice = new VoiceManager({
+  socket,
+  onUpdate: () => {
+    renderVoiceView();
+    renderVoiceDock();
+    renderSidebar();
+    syncVoiceAudio();
+  },
+  onSpeaking: (key, speaking) => {
+    const connId = key === 'self' ? state.connId : key;
+    const tile = voiceTileEls.get(key === 'self' ? 'self' : key);
+    if (tile) {
+      tile.classList.toggle('is-speaking', speaking);
+    }
+    for (const row of document.querySelectorAll(`[data-occ-conn="${connId}"]`)) {
+      row.classList.toggle('is-speaking', speaking);
+    }
+  },
+  onEnded: () => {
+    state.focusedScreen = null;
+    renderVoiceView();
+    renderVoiceDock();
+    renderSidebar();
+    syncVoiceAudio();
   }
+});
 
-  return parts.slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+const msgEls = new Map(); // messageId -> <li>
+const voiceTileEls = new Map(); // connId|'self' -> tile
+const voiceAudioEls = new Map(); // connId -> <audio>
+
+// ============================================================== helpers
+
+function keyForText(serverId, channelId) {
+  return `srv:${serverId}:${channelId}`;
 }
 
-function getLiveTrack(kind) {
-  return state.localStream.getTracks().find((track) => track.kind === kind && track.readyState === 'live');
+function keyForDm(dmId) {
+  return `dm:${dmId}`;
 }
 
-function getLocalMediaState() {
-  const audioTrack = getLiveTrack('audio');
-  const videoTrack = getLiveTrack('video');
-  return {
-    audio: Boolean(audioTrack && audioTrack.enabled),
-    video: Boolean(videoTrack && videoTrack.enabled)
-  };
+function activeChannelKey() {
+  const view = state.view;
+  if (view.kind === 'text' || view.kind === 'voice') {
+    return keyForText(view.serverId, view.channelId);
+  }
+  if (view.kind === 'dm') {
+    return keyForDm(view.dmId);
+  }
+  return null;
 }
 
-function setUseIcon(container, iconId) {
-  const use = container.querySelector('use');
-  if (use) {
-    use.setAttribute('href', `#${iconId}`);
-  }
+function getUser(userId) {
+  return state.users.get(userId) || { id: userId, name: 'Unknown', color: 8, guest: false };
 }
 
-function mediaErrorMessage(error) {
-  if (!window.isSecureContext && location.hostname !== 'localhost') {
-    return 'Camera and microphone access requires HTTPS.';
-  }
-  if (error && error.name === 'NotAllowedError') {
-    return 'Camera or microphone permission was blocked. Allow access in your browser settings.';
-  }
-  if (error && error.name === 'NotFoundError') {
-    return 'No matching camera or microphone was found.';
-  }
-  if (error && error.name === 'NotReadableError') {
-    return 'Your camera or microphone is already in use by another app.';
-  }
-  return 'Could not access your camera or microphone.';
+function getServer(serverId) {
+  return state.servers.get(serverId) || null;
 }
 
-function bindTrackEnd(track) {
-  track.addEventListener('ended', () => {
-    state.localStream.removeTrack(track);
-    syncLocalMediaUi();
-    sendMediaState();
-  }, { once: true });
+function getChannel(serverId, channelId) {
+  const server = getServer(serverId);
+  return server ? server.channels.find((channel) => channel.id === channelId) || null : null;
 }
 
-async function acquireForMode(mode) {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    throw new Error('Media devices are not supported in this browser.');
-  }
+function myRole(server) {
+  return server ? server.myRole : null;
+}
 
-  if (mode === 'audio') {
-    for (const videoTrack of state.localStream.getVideoTracks()) {
-      videoTrack.stop();
-      state.localStream.removeTrack(videoTrack);
+function isModerator(server) {
+  return server && (server.myRole === 'owner' || server.myRole === 'admin');
+}
+
+function canModerate(server, targetId) {
+  if (!server || targetId === state.me.id) {
+    return false;
+  }
+  const rank = { member: 0, admin: 1, owner: 2 };
+  const target = server.members.find((member) => member.userId === targetId);
+  const mine = rank[server.myRole] ?? -1;
+  const theirs = target ? rank[target.role] : 0;
+  return mine >= 1 && mine > theirs;
+}
+
+function isUnread(channelKey, lastAt) {
+  return (lastAt || 0) > (state.lastRead[channelKey] || 0);
+}
+
+function serverMentionCount(server) {
+  let total = 0;
+  for (const channel of server.channels) {
+    if (channel.type === 'text') {
+      total += state.mentions[keyForText(server.id, channel.id)] || 0;
     }
   }
+  return total;
+}
 
-  const needsAudio = !getLiveTrack('audio');
-  const needsVideo = mode === 'video' && !getLiveTrack('video');
+function serverHasUnread(server) {
+  return server.channels.some(
+    (channel) => channel.type === 'text' && isUnread(keyForText(server.id, channel.id), channel.lastAt)
+  );
+}
 
-  if (!needsAudio && !needsVideo) {
+const CARD_COLORS = 6;
+
+function colorClassAt(index) {
+  return `card-c${index % CARD_COLORS}`;
+}
+
+function formatRemaining(expiresAt) {
+  const ms = Math.max(0, expiresAt - Date.now());
+  const hours = Math.floor(ms / 3_600_000);
+  const minutes = Math.max(1, Math.round((ms % 3_600_000) / 60_000));
+  if (hours >= 1) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes} min`;
+}
+
+setInterval(() => {
+  const server = (state.view.kind === 'text' || state.view.kind === 'voice') ? getServer(state.view.serverId) : null;
+  if (server && server.temp) {
+    renderSidebar();
+  }
+}, 30_000);
+
+function updateTitle() {
+  let mentionTotal = 0;
+  for (const count of Object.values(state.mentions)) {
+    mentionTotal += count;
+  }
+  document.title = mentionTotal ? `(${mentionTotal}) Roomly` : 'Roomly';
+}
+
+// ============================================================== rendering
+
+function renderAll() {
+  renderRail();
+  renderSidebar();
+  renderMeBar();
+  renderVoiceDock();
+  renderMainView();
+  updateTitle();
+}
+
+function renderRail() {
+  ui.homeButton.classList.toggle('is-active', state.view.kind === 'home' || state.view.kind === 'dm');
+  let dmMentions = 0;
+  for (const dm of state.dms.values()) {
+    dmMentions += state.mentions[keyForDm(dm.id)] || 0;
+    // any unread dm shows as badge-less bold handled in list; rail badge counts mentions only
+  }
+  let dmUnread = 0;
+  for (const dm of state.dms.values()) {
+    if (isUnread(keyForDm(dm.id), dm.lastAt)) {
+      dmUnread += 1;
+    }
+  }
+  const homeBadge = ui.homeButton.querySelector('.rail-badge');
+  const homeCount = dmMentions || dmUnread;
+  homeBadge.hidden = !homeCount;
+  homeBadge.textContent = homeCount > 99 ? '99+' : String(homeCount);
+  ui.homeButton.classList.toggle('has-unread', dmUnread > 0);
+
+  ui.railServers.replaceChildren();
+  const servers = Array.from(state.servers.values()).sort((a, b) => a.createdAt - b.createdAt);
+  for (const server of servers) {
+    const mentions = serverMentionCount(server);
+    const button = el('button', {
+      class: 'rail-item',
+      type: 'button',
+      title: server.temp ? `${server.name} · temporary` : server.name,
+      dataset: { serverId: server.id },
+      onclick: () => openServer(server.id)
+    }, server.icon || initials(server.name));
+    button.classList.toggle('is-active',
+      (state.view.kind === 'text' || state.view.kind === 'voice') && state.view.serverId === server.id);
+    button.classList.toggle('has-unread', serverHasUnread(server));
+    if (mentions) {
+      button.append(el('span', { class: 'rail-badge', text: mentions > 99 ? '99+' : String(mentions) }));
+    }
+    ui.railServers.append(button);
+  }
+}
+
+function renderMeBar() {
+  const me = state.me;
+  ui.meAvatar.className = `avatar c${me.color || 1}`;
+  ui.meAvatar.textContent = initials(me.name);
+  ui.meName.textContent = me.name;
+  ui.meTag.textContent = me.guest ? 'Guest' : `@${me.username}`;
+}
+
+function renderSidebar() {
+  const inServer = state.view.kind === 'text' || state.view.kind === 'voice';
+  const server = inServer ? getServer(state.view.serverId) : null;
+
+  ui.dmPane.hidden = Boolean(server);
+  ui.channelPane.hidden = !server;
+  ui.serverMenuButton.hidden = !server;
+  ui.sidebarTitle.textContent = server ? server.name : 'Direct messages';
+
+  if (!server) {
+    renderDmList();
     return;
   }
 
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: needsAudio ? {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true
-    } : false,
-    video: needsVideo ? {
-      width: { ideal: 1280 },
-      height: { ideal: 720 },
-      facingMode: 'user'
-    } : false
-  });
+  const moderator = isModerator(server);
+  ui.addTextChannelButton.hidden = !moderator;
+  ui.addVoiceChannelButton.hidden = !moderator;
 
-  for (const track of stream.getTracks()) {
-    state.localStream.addTrack(track);
-    bindTrackEnd(track);
+  const oldBanner = ui.channelPane.querySelector('.temp-banner');
+  if (oldBanner) {
+    oldBanner.remove();
   }
-}
-
-function ensureMedia(mode) {
-  const request = state.mediaQueue
-    .catch(() => undefined)
-    .then(() => acquireForMode(mode));
-  state.mediaQueue = request;
-  return request;
-}
-
-async function acquireSingleTrack(kind) {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    throw new Error('Media devices are not supported in this browser.');
+  if (server.temp && server.expiresAt) {
+    ui.channelPane.prepend(el('div', { class: 'temp-banner', title: 'Guest-hosted servers close automatically.' },
+      icon('i-refresh'),
+      el('span', {},
+        el('strong', { text: 'Temporary server' }),
+        el('small', { text: `Closes in ${formatRemaining(server.expiresAt)}` })
+      )
+    ));
   }
 
-  const constraints = kind === 'audio'
-    ? { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false }
-    : { audio: false, video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } };
-  const stream = await navigator.mediaDevices.getUserMedia(constraints);
-  const track = stream.getTracks()[0];
+  ui.textChannelList.replaceChildren();
+  ui.voiceChannelList.replaceChildren();
 
-  state.localStream.addTrack(track);
-  bindTrackEnd(track);
-  await attachTrackToPeers(track);
-  return track;
-}
-
-async function attachTrackToPeers(track) {
-  const replacements = [];
-
-  for (const peer of state.peers.values()) {
-    const matchingSender = peer.connection.getSenders().find((sender) => sender.track && sender.track.kind === track.kind);
-    if (matchingSender) {
-      replacements.push(matchingSender.replaceTrack(track));
+  let cardIndex = 0;
+  for (const channel of server.channels) {
+    if (channel.type === 'text') {
+      ui.textChannelList.append(renderTextChannelItem(server, channel, cardIndex));
     } else {
-      peer.connection.addTrack(track, state.localStream);
+      ui.voiceChannelList.append(renderVoiceChannelItem(server, channel, cardIndex));
     }
-  }
-
-  await Promise.allSettled(replacements);
-}
-
-function syncPreview() {
-  const media = getLocalMediaState();
-  const name = elements.nameInput.value.trim() || state.displayName || 'You';
-
-  if (state.localStream.getTracks().length && elements.previewVideo.srcObject !== state.localStream) {
-    elements.previewVideo.srcObject = state.localStream;
-  } else if (!state.localStream.getTracks().length && elements.previewVideo.srcObject) {
-    elements.previewVideo.srcObject = null;
-  }
-
-  elements.previewStage.classList.toggle('camera-on', media.video);
-  elements.previewAvatar.textContent = getInitials(name);
-  elements.previewLabel.textContent = name;
-
-  elements.previewMicStatus.classList.toggle('is-off', !media.audio);
-  elements.previewMicStatus.lastChild.textContent = media.audio ? ' Mic on' : ' Mic off';
-  setUseIcon(elements.previewMicStatus, media.audio ? 'icon-mic' : 'icon-mic-off');
-
-  elements.previewCameraStatus.classList.toggle('is-off', !media.video);
-  elements.previewCameraStatus.lastChild.textContent = media.video ? ' Camera on' : ' Camera off';
-  setUseIcon(elements.previewCameraStatus, media.video ? 'icon-camera' : 'icon-camera-off');
-}
-
-function syncControlButton(button, enabled, kind) {
-  button.classList.toggle('is-off', !enabled);
-  button.setAttribute('aria-pressed', String(enabled));
-  button.setAttribute('aria-label', `Turn ${kind} ${enabled ? 'off' : 'on'}`);
-}
-
-function syncLocalMediaUi() {
-  const media = getLocalMediaState();
-  syncPreview();
-  syncControlButton(elements.micButton, media.audio, 'microphone');
-  syncControlButton(elements.cameraButton, media.video, 'camera');
-
-  const localTile = elements.videoGrid.querySelector('[data-local="true"]');
-  if (localTile) {
-    updateTileMedia(localTile, media, state.localStream);
+    cardIndex += 1;
   }
 }
 
-function send(message) {
-  if (state.socket && state.socket.readyState === WebSocket.OPEN) {
-    state.socket.send(JSON.stringify(message));
+function renderTextChannelItem(server, channel, cardIndex = 0) {
+  const channelKey = keyForText(server.id, channel.id);
+  const active = state.view.kind === 'text' && state.view.channelId === channel.id;
+  const mentions = state.mentions[channelKey] || 0;
+  const unread = isUnread(channelKey, channel.lastAt);
+  const item = el('button', {
+    class: `channel-item ${colorClassAt(cardIndex)}`,
+    type: 'button',
+    onclick: () => openTextChannel(server.id, channel.id)
+  },
+    el('span', { class: 'ch-icon' }, icon('i-hash')),
+    el('span', { class: 'channel-name', text: channel.name }),
+    el('span', { class: 'ch-pills' },
+      mentions ? el('span', { class: 'pill-chip mention-badge', text: `${mentions > 99 ? '99+' : mentions} ping${mentions === 1 ? '' : 's'}` }) : null,
+      !mentions && unread && !active ? el('span', { class: 'pill-chip', text: 'new' }) : null,
+      !mentions && unread && !active ? el('span', { class: 'unread-dot', hidden: true }) : null
+    )
+  );
+  item.classList.toggle('is-active', active);
+  item.classList.toggle('has-unread', unread);
+  if (isModerator(server)) {
+    item.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
+      openChannelSettings(server, channel);
+    });
+  }
+  return item;
+}
+
+function renderVoiceChannelItem(server, channel, cardIndex = 0) {
+  const channelKey = keyForText(server.id, channel.id);
+  const participants = state.voiceStates.get(channelKey) || [];
+  const active = state.view.kind === 'voice' && state.view.channelId === channel.id;
+
+  const item = el('button', {
+    class: `channel-item is-voice ${colorClassAt(cardIndex)}`,
+    type: 'button',
+    onclick: () => openVoiceChannel(server.id, channel.id)
+  },
+    el('span', { class: 'ch-icon' }, icon('i-speaker')),
+    el('span', { class: 'channel-name', text: channel.name }),
+    el('span', { class: 'ch-pills' },
+      participants.length ? el('span', { class: 'pill-chip live channel-live', text: `● ${participants.length} live` }) : null
+    )
+  );
+  item.classList.toggle('is-active', active);
+  if (isModerator(server)) {
+    item.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
+      openChannelSettings(server, channel);
+    });
+  }
+
+  const wrap = el('div', {});
+  wrap.append(item);
+  if (participants.length) {
+    const list = el('div', { class: 'voice-occupants' });
+    for (const participant of participants) {
+      const user = getUser(participant.userId);
+      const row = el('div', { class: 'voice-occupant', dataset: { occConn: participant.connId } },
+        avatarEl(user),
+        el('span', { class: 'occ-name', text: user.name }),
+        participant.media && participant.media.screen ? icon('i-screen', 'occ-screen') : null,
+        participant.media && !participant.media.audio ? icon('i-mic-off') : null,
+        participant.media && participant.media.video ? icon('i-cam') : null
+      );
+      list.append(row);
+    }
+    wrap.append(list);
+  }
+  return wrap;
+}
+
+function renderDmList() {
+  ui.dmList.replaceChildren();
+  const dms = Array.from(state.dms.values()).sort((a, b) => (b.lastAt || b.createdAt) - (a.lastAt || a.createdAt));
+  ui.dmEmpty.hidden = dms.length > 0;
+  for (const dm of dms) {
+    const user = getUser(dm.otherUserId);
+    const channelKey = keyForDm(dm.id);
+    const mentions = state.mentions[channelKey] || 0;
+    const item = el('button', {
+      class: 'dm-item',
+      type: 'button',
+      onclick: () => openDm(dm.id)
+    },
+      avatarEl(user),
+      el('span', { class: 'dm-name', text: user.name }),
+      mentions ? el('span', { class: 'mention-badge', text: String(mentions) }) : null,
+      el('span', { class: `presence-dot${state.online.has(user.id) ? ' online' : ''}` })
+    );
+    item.classList.toggle('is-active', state.view.kind === 'dm' && state.view.dmId === dm.id);
+    item.classList.toggle('has-unread', isUnread(channelKey, dm.lastAt));
+    ui.dmList.append(item);
   }
 }
 
-function sendMediaState() {
-  if (!state.joined) {
+function renderVoiceDock() {
+  const connected = voice.active && voice.channelKey;
+  ui.voiceDock.hidden = !connected;
+  ui.sharePill.hidden = !(connected && voice.screenStream);
+  if (!connected) {
     return;
   }
+  const [, serverId, channelId] = voice.channelKey.split(':');
+  const server = getServer(serverId);
+  const channel = getChannel(serverId, channelId);
+  ui.voiceDockName.textContent = server && channel ? `${channel.name} — ${server.name}` : 'Voice channel';
+  ui.voiceDockName.onclick = () => {
+    if (server && channel) {
+      openVoiceChannel(serverId, channelId);
+    }
+  };
 
-  send({ type: 'media-state', media: getLocalMediaState() });
+  // Keep the always-visible controls in sync with the live media state.
+  const media = voice.media();
+  ui.dockMicButton.classList.toggle('is-off', !media.audio);
+  ui.dockMicButton.setAttribute('aria-pressed', String(media.audio));
+  ui.dockCamButton.classList.toggle('is-off', !media.video);
+  ui.dockCamButton.setAttribute('aria-pressed', String(media.video));
+  ui.dockScreenButton.classList.toggle('is-live', media.screen);
+  ui.dockScreenButton.setAttribute('aria-pressed', String(media.screen));
+  ui.dockScreenButton.title = media.screen ? 'Stop sharing your screen' : 'Share your screen';
+  ui.voiceDockStatus.classList.toggle('is-sharing', media.screen);
+  ui.voiceDockStatus.querySelector('span').textContent = media.screen ? 'Sharing your screen' : 'Voice connected';
 }
 
-function showToast(message, isError = false) {
-  clearTimeout(toastTimer);
-  elements.toast.textContent = message;
-  elements.toast.classList.toggle('is-error', isError);
-  elements.toast.hidden = false;
-  toastTimer = setTimeout(() => {
-    elements.toast.hidden = true;
-  }, 3200);
+let lastViewSignature = '';
+
+function renderHome() {
+  const hour = new Date().getHours();
+  const daypart = hour < 5 ? 'tonight' : hour < 12 ? 'this morning' : hour < 18 ? 'today' : 'tonight';
+  const first = (state.me.name || '').split(/\s+/)[0];
+  ui.homeGreeting.textContent = `How's it going ${daypart}, ${first}?`;
+
+  const servers = Array.from(state.servers.values()).sort((a, b) => a.createdAt - b.createdAt);
+  ui.homeSub.textContent = servers.length
+    ? 'Jump back into your spaces, or start something new.'
+    : 'Create a server for your crew, or join one with an invite link.';
+
+  ui.homeServerCards.replaceChildren();
+  let cardIndex = 0;
+  for (const server of servers) {
+    const liveCount = server.channels
+      .filter((channel) => channel.type === 'voice')
+      .reduce((sum, channel) => sum + ((state.voiceStates.get(keyForText(server.id, channel.id)) || []).length), 0);
+    const mentions = serverMentionCount(server);
+    const unread = serverHasUnread(server);
+
+    const card = el('button', {
+      class: `home-card-item ${colorClassAt(cardIndex)}`,
+      type: 'button',
+      onclick: () => openServer(server.id)
+    },
+      el('span', { class: 'hc-top' },
+        el('span', { class: 'hc-icon', text: server.icon || initials(server.name) }),
+        el('span', { class: 'hc-arrow' }, icon('i-chevron'))
+      ),
+      el('span', { class: 'hc-name', text: server.name }),
+      el('span', { class: 'hc-pills' },
+        el('span', { class: 'pill-chip', text: `${server.members.length} member${server.members.length === 1 ? '' : 's'}` }),
+        el('span', { class: 'pill-chip', text: `${server.channels.length} channels` }),
+        liveCount ? el('span', { class: 'pill-chip live', text: `● ${liveCount} in voice` }) : null,
+        mentions ? el('span', { class: 'pill-chip alert', text: `${mentions} ping${mentions === 1 ? '' : 's'}` }) : null,
+        !mentions && unread ? el('span', { class: 'pill-chip', text: 'new messages' }) : null,
+        server.temp ? el('span', { class: 'pill-chip', text: `closes in ${formatRemaining(server.expiresAt)}` }) : null
+      )
+    );
+    card.style.setProperty('animation-delay', `${cardIndex * 45}ms`);
+    ui.homeServerCards.append(card);
+    cardIndex += 1;
+  }
 }
 
-function createParticipantTile(id, name, media, stream, isLocal = false) {
-  const tile = elements.participantTemplate.content.firstElementChild.cloneNode(true);
-  const video = tile.querySelector('video');
+function renderMainView() {
+  const view = state.view;
+  ui.homeView.hidden = view.kind !== 'home';
+  if (view.kind === 'home') {
+    renderHome();
+  }
+  ui.chatView.hidden = !(view.kind === 'text' || view.kind === 'dm');
+  ui.voiceView.hidden = view.kind !== 'voice';
 
-  tile.dataset.peerId = id;
-  tile.dataset.local = String(isLocal);
-  tile.classList.toggle('is-local', isLocal);
-  tile.querySelector('.tile-name').textContent = isLocal ? `${name} (You)` : name;
-  tile.querySelector('.tile-avatar').textContent = getInitials(name);
-  video.muted = isLocal;
-  video.srcObject = stream;
-  video.addEventListener('loadedmetadata', () => {
-    video.play().catch(() => {
-      if (!isLocal) {
-        showToast('Tap the page to start participant audio.');
-      }
-    });
-    updateTileMedia(tile, media, stream);
-  });
+  // Level-2 animation: slide the pane in whenever the destination changes.
+  const signature = `${view.kind}:${view.serverId || ''}:${view.channelId || view.dmId || ''}`;
+  if (signature !== lastViewSignature) {
+    lastViewSignature = signature;
+    const pane = view.kind === 'voice' ? ui.voiceView : view.kind === 'home' ? ui.homeView : ui.chatView;
+    pane.classList.remove('view-anim');
+    void pane.offsetWidth; // restart the animation
+    pane.classList.add('view-anim');
+  }
 
-  updateTileMedia(tile, media, stream);
-  elements.videoGrid.append(tile);
-  updateParticipantCount();
-  return tile;
-}
+  const inServer = view.kind === 'text' || view.kind === 'voice';
+  const server = inServer ? getServer(view.serverId) : null;
+  ui.invitePeopleButton.hidden = !server;
+  ui.toggleMembersButton.hidden = !(view.kind === 'text' && server);
+  ui.memberPanel.hidden = !(view.kind === 'text' && server && state.memberPanelOpen);
 
-function updateTileMedia(tile, media, stream) {
-  const liveVideo = stream && stream.getVideoTracks().some((track) => track.readyState === 'live');
-  const cameraOn = Boolean(media.video && liveVideo);
-  const micOn = Boolean(media.audio);
-
-  tile.classList.toggle('camera-on', cameraOn);
-  tile.classList.toggle('mic-off', !micOn);
-  const micStatus = tile.querySelector('.tile-mic');
-  micStatus.setAttribute('aria-label', micOn ? 'Microphone on' : 'Microphone off');
-}
-
-function updateParticipantCount() {
-  const count = state.joined ? state.peers.size + 1 : 0;
-  elements.participantCount.textContent = String(count);
-  elements.videoGrid.dataset.count = String(Math.min(count, 4));
-}
-
-function updatePeerConnectionState(peer) {
-  const connectionState = peer.connection.connectionState;
-  peer.tile.classList.toggle('is-connected', connectionState === 'connected');
-  peer.tile.classList.toggle('has-failed', connectionState === 'failed');
-  const label = peer.tile.querySelector('.tile-connection');
-
-  if (connectionState === 'failed') {
-    label.textContent = 'Connection failed';
-  } else if (connectionState === 'disconnected') {
-    label.textContent = 'Reconnecting';
+  if (view.kind === 'home') {
+    ui.channelIcon.replaceChildren(icon('i-logo'));
+    ui.channelTitle.textContent = 'Welcome';
+    ui.channelTopic.textContent = 'Create or join a server to get talking';
+  } else if (view.kind === 'dm') {
+    const dm = state.dms.get(view.dmId);
+    const user = dm ? getUser(dm.otherUserId) : null;
+    ui.channelIcon.replaceChildren(user ? avatarEl(user) : icon('i-users'));
+    const dmAvatar = ui.channelIcon.querySelector('.avatar');
+    if (dmAvatar) {
+      dmAvatar.style.width = '24px';
+      dmAvatar.style.height = '24px';
+      dmAvatar.style.fontSize = '10px';
+    }
+    ui.channelTitle.textContent = user ? user.name : 'Direct message';
+    ui.channelTopic.textContent = user && user.username ? `@${user.username}` : user && user.guest ? 'Guest' : '';
   } else {
-    label.textContent = 'Connecting';
+    const channel = getChannel(view.serverId, view.channelId);
+    ui.channelIcon.replaceChildren(icon(view.kind === 'voice' ? 'i-speaker' : 'i-hash'));
+    ui.channelTitle.textContent = channel ? channel.name : '';
+    ui.channelTopic.textContent = channel ? channel.topic || '' : '';
+  }
+
+  if (view.kind === 'text' || view.kind === 'dm') {
+    ui.composerInput.placeholder = view.kind === 'dm'
+      ? `Message @${ui.channelTitle.textContent}`
+      : `Message #${ui.channelTitle.textContent}`;
+  }
+
+  renderMembers();
+  renderVoiceView();
+}
+
+function renderMembers() {
+  if (ui.memberPanel.hidden) {
+    return;
+  }
+  const server = getServer(state.view.serverId);
+  if (!server) {
+    return;
+  }
+
+  const groups = { online: [], offline: [] };
+  for (const member of server.members) {
+    const user = getUser(member.userId);
+    (state.online.has(member.userId) ? groups.online : groups.offline).push({ member, user });
+  }
+  const roleRank = { owner: 0, admin: 1, member: 2 };
+  const sorter = (a, b) =>
+    (roleRank[a.member.role] - roleRank[b.member.role]) || a.user.name.localeCompare(b.user.name);
+  groups.online.sort(sorter);
+  groups.offline.sort(sorter);
+
+  ui.memberList.replaceChildren();
+  for (const [label, entries] of [[`Online — ${groups.online.length}`, groups.online], [`Offline — ${groups.offline.length}`, groups.offline]]) {
+    if (!entries.length) {
+      continue;
+    }
+    ui.memberList.append(el('p', { class: 'member-group-label', text: label }));
+    for (const { member, user } of entries) {
+      const avatarWrap = el('span', { class: 'member-avatar-wrap' },
+        avatarEl(user),
+        el('span', { class: `presence-dot${state.online.has(user.id) ? ' online' : ''}` })
+      );
+      const item = el('button', {
+        class: `member-item${state.online.has(user.id) ? '' : ' is-offline'}`,
+        type: 'button',
+        onclick: (event) => openUserPopover(event.currentTarget, user, server)
+      },
+        avatarWrap,
+        el('span', { class: 'member-name' },
+          user.name,
+          member.role === 'owner' ? icon('i-crown', 'role-owner-icon') : null,
+          member.role === 'admin' ? icon('i-shield', 'role-admin-icon') : null,
+          user.guest ? el('span', { class: 'guest-chip', text: 'guest' }) : null
+        )
+      );
+      ui.memberList.append(item);
+    }
   }
 }
 
-function sendSignal(target, payload) {
-  send({ type: 'signal', target, payload });
+// ============================================================== navigation
+
+function setView(view) {
+  state.view = view;
+  closePopovers();
+  cancelReply();
+  stopEditing();
+  state.mentionTokens.clear();
+  renderAll();
 }
 
-function createPeer(peerInfo) {
-  const existing = state.peers.get(peerInfo.id);
-  if (existing) {
-    existing.name = peerInfo.name || existing.name;
-    existing.media = peerInfo.media || existing.media;
-    existing.tile.querySelector('.tile-name').textContent = existing.name;
-    existing.tile.querySelector('.tile-avatar').textContent = getInitials(existing.name);
-    updateTileMedia(existing.tile, existing.media, existing.stream);
-    return existing;
+function openHome() {
+  setView({ kind: 'home' });
+}
+
+function openServer(serverId) {
+  const server = getServer(serverId);
+  if (!server) {
+    return;
+  }
+  const firstText = server.channels.find((channel) => channel.type === 'text');
+  if (firstText) {
+    openTextChannel(serverId, firstText.id);
+  } else {
+    const firstVoice = server.channels.find((channel) => channel.type === 'voice');
+    if (firstVoice) {
+      openVoiceChannel(serverId, firstVoice.id);
+    }
+  }
+}
+
+function openTextChannel(serverId, channelId) {
+  setView({ kind: 'text', serverId, channelId });
+  openChat(keyForText(serverId, channelId));
+}
+
+function openDm(dmId) {
+  setView({ kind: 'dm', dmId });
+  openChat(keyForDm(dmId));
+}
+
+function openVoiceChannel(serverId, channelId) {
+  setView({ kind: 'voice', serverId, channelId });
+}
+
+// ============================================================== chat view
+
+async function openChat(channelKey) {
+  msgEls.clear();
+  ui.messageList.replaceChildren();
+  ui.typingBar.replaceChildren();
+  ui.loadOlderButton.hidden = true;
+  renderChatIntro();
+
+  let bucket = state.messages.get(channelKey);
+  if (!bucket) {
+    bucket = { list: [], hasMore: false, loaded: false };
+    state.messages.set(channelKey, bucket);
   }
 
-  const connection = new RTCPeerConnection(state.rtcConfiguration);
-  const remoteStream = new MediaStream();
-  const peer = {
-    id: peerInfo.id,
-    name: peerInfo.name || 'Guest',
-    media: peerInfo.media || { audio: true, video: true },
-    connection,
-    stream: remoteStream,
-    tile: null,
-    polite: state.selfId.localeCompare(peerInfo.id) > 0,
-    makingOffer: false,
-    ignoreOffer: false,
-    isSettingRemoteAnswerPending: false,
-    pendingCandidates: []
-  };
-
-  state.peers.set(peer.id, peer);
-  peer.tile = createParticipantTile(peer.id, peer.name, peer.media, remoteStream);
-
-  connection.addEventListener('icecandidate', ({ candidate }) => {
-    if (candidate) {
-      sendSignal(peer.id, { candidate });
-    }
-  });
-
-  connection.addEventListener('track', (event) => {
-    if (event.streams[0]) {
-      peer.stream = event.streams[0];
-    } else if (!peer.stream.getTracks().includes(event.track)) {
-      peer.stream.addTrack(event.track);
-    }
-
-    const video = peer.tile.querySelector('video');
-    if (video.srcObject !== peer.stream) {
-      video.srcObject = peer.stream;
-    }
-
-    event.track.addEventListener('unmute', () => updateTileMedia(peer.tile, peer.media, peer.stream));
-    event.track.addEventListener('ended', () => updateTileMedia(peer.tile, peer.media, peer.stream));
-    updateTileMedia(peer.tile, peer.media, peer.stream);
-  });
-
-  connection.addEventListener('connectionstatechange', () => {
-    updatePeerConnectionState(peer);
-    if (connection.connectionState === 'failed' && typeof connection.restartIce === 'function') {
-      connection.restartIce();
-    }
-  });
-
-  connection.addEventListener('negotiationneeded', async () => {
+  if (!bucket.loaded) {
     try {
-      peer.makingOffer = true;
-      await connection.setLocalDescription();
-      sendSignal(peer.id, { description: connection.localDescription });
-    } catch (error) {
-      if (connection.signalingState !== 'closed') {
-        console.error('Could not negotiate a peer connection:', error);
+      const ack = await socket.request('messages', { channelKey });
+      if (activeChannelKey() !== channelKey) {
+        return;
       }
-    } finally {
-      peer.makingOffer = false;
-    }
-  });
-
-  for (const track of state.localStream.getTracks()) {
-    connection.addTrack(track, state.localStream);
-  }
-
-  return peer;
-}
-
-async function addPendingCandidates(peer) {
-  const candidates = peer.pendingCandidates.splice(0);
-  for (const candidate of candidates) {
-    try {
-      await peer.connection.addIceCandidate(candidate);
-    } catch (error) {
-      if (!peer.ignoreOffer) {
-        throw error;
+      for (const [id, user] of Object.entries(ack.users || {})) {
+        state.users.set(id, { ...state.users.get(id), ...user });
       }
+      bucket.list = ack.messages || [];
+      bucket.hasMore = Boolean(ack.hasMore);
+      bucket.loaded = true;
+    } catch (error) {
+      toast(error.message, true);
+      return;
     }
   }
+
+  rebuildMessageList(channelKey);
+  scrollToBottom();
+  markRead(channelKey);
 }
 
-async function handleSignal(message) {
-  let peer = state.peers.get(message.from);
-  if (!peer) {
-    peer = createPeer({ id: message.from, name: 'Guest', media: { audio: true, video: true } });
+function renderChatIntro() {
+  const view = state.view;
+  ui.chatIntro.replaceChildren();
+  if (view.kind === 'text') {
+    const channel = getChannel(view.serverId, view.channelId);
+    if (channel) {
+      ui.chatIntro.append(
+        el('span', { class: 'intro-icon' }, icon('i-hash')),
+        el('h3', { text: `Welcome to #${channel.name}` }),
+        el('p', { text: channel.topic || 'This is the start of the channel.' })
+      );
+    }
+  } else if (view.kind === 'dm') {
+    const dm = state.dms.get(view.dmId);
+    const user = dm ? getUser(dm.otherUserId) : null;
+    if (user) {
+      ui.chatIntro.append(
+        avatarEl(user),
+        el('h3', { text: user.name }),
+        el('p', { text: `This is the beginning of your direct message history with ${user.name}.` })
+      );
+      const introAvatar = ui.chatIntro.querySelector('.avatar');
+      introAvatar.style.width = '52px';
+      introAvatar.style.height = '52px';
+      introAvatar.style.fontSize = '19px';
+    }
+  }
+}
+
+function rebuildMessageList(channelKey) {
+  const bucket = state.messages.get(channelKey);
+  if (!bucket) {
+    return;
+  }
+  msgEls.clear();
+  ui.messageList.replaceChildren();
+  ui.loadOlderButton.hidden = !bucket.hasMore;
+
+  let previous = null;
+  for (const message of bucket.list) {
+    appendMessageRow(channelKey, message, previous);
+    previous = message;
   }
 
-  const { connection } = peer;
-  const payload = message.payload || {};
+  // Stagger the most recent rows into view (level-3 animation).
+  const rows = ui.messageList.querySelectorAll('.msg');
+  const start = Math.max(0, rows.length - 18);
+  for (let index = start; index < rows.length; index += 1) {
+    rows[index].classList.add('msg-stagger');
+    rows[index].style.setProperty('--i', String(index - start));
+  }
+}
 
+function appendMessageRow(channelKey, message, previous) {
+  if (!previous || !sameDay(previous.createdAt, message.createdAt)) {
+    ui.messageList.append(el('li', { class: 'day-divider', text: formatDay(message.createdAt) }));
+  }
+  const compact = Boolean(previous &&
+    previous.authorId === message.authorId &&
+    !message.replyTo && !previous.deleted &&
+    sameDay(previous.createdAt, message.createdAt) &&
+    message.createdAt - previous.createdAt < 5 * 60 * 1000);
+
+  const row = buildMessageRow(channelKey, message, compact);
+  ui.messageList.append(row);
+  msgEls.set(message.id, row);
+}
+
+function buildMessageRow(channelKey, message, compact) {
+  const author = getUser(message.authorId);
+  const row = el('li', { class: `msg${compact ? ' is-compact' : ''}`, dataset: { id: message.id, compact: String(compact) } });
+  if (!message.deleted && Array.isArray(message.mentions) && message.mentions.includes(state.me.id)) {
+    row.classList.add('is-mention');
+  }
+
+  const gutter = el('div', { class: 'msg-gutter' });
+  if (compact) {
+    gutter.append(el('span', { class: 'msg-hover-time', text: formatTime(message.createdAt) }));
+  } else {
+    const avatar = avatarEl(author);
+    avatar.addEventListener('click', (event) => openUserPopover(event.currentTarget, author, currentServerForView()));
+    gutter.append(avatar);
+  }
+
+  const body = el('div', { class: 'msg-body' });
+
+  if (message.replyTo) {
+    const bucket = state.messages.get(channelKey);
+    const target = bucket ? bucket.list.find((candidate) => candidate.id === message.replyTo) : null;
+    const targetAuthor = target ? getUser(target.authorId) : null;
+    body.append(el('div', { class: 'msg-reply-ref' },
+      icon('i-reply'),
+      el('strong', { text: targetAuthor ? targetAuthor.name : 'Original message' }),
+      el('span', { text: target ? contentPreview(target, state.users) : 'not loaded' })
+    ));
+  }
+
+  if (!compact) {
+    const server = currentServerForView();
+    const member = server ? server.members.find((candidate) => candidate.userId === message.authorId) : null;
+    const authorButton = el('button', {
+      class: `msg-author${member ? ` role-${member.role}` : ''}`,
+      type: 'button',
+      text: author.name,
+      onclick: (event) => openUserPopover(event.currentTarget, author, server)
+    });
+    body.append(el('div', { class: 'msg-head' },
+      authorButton,
+      author.guest ? el('span', { class: 'guest-chip', text: 'guest' }) : null,
+      el('span', { class: 'msg-time', title: formatFull(message.createdAt), text: formatTimeSmart(message.createdAt) })
+    ));
+  }
+
+  body.append(buildMessageContent(message));
+  row.append(gutter, body);
+
+  if (!message.deleted) {
+    row.append(buildMessageActions(channelKey, message));
+  }
+  return row;
+}
+
+function formatTimeSmart(ts) {
+  return sameDay(ts, Date.now()) ? `today at ${formatTime(ts)}` : formatFull(ts);
+}
+
+function buildMessageContent(message) {
+  const wrap = el('div', { class: 'msg-content-wrap' });
+
+  const content = el('div', { class: 'msg-content' });
+  if (message.deleted) {
+    content.classList.add('is-deleted');
+    content.textContent = 'This message was deleted';
+  } else {
+    content.append(renderContent(message.content, state.users));
+    if (message.editedAt) {
+      content.append(el('span', { class: 'msg-edited', text: ' (edited)' }));
+    }
+  }
+  wrap.append(content);
+
+  if (!message.deleted && message.attachments && message.attachments.length) {
+    const attachments = el('div', { class: 'msg-attachments' });
+    for (const attachment of message.attachments) {
+      attachments.append(buildAttachment(attachment));
+    }
+    wrap.append(attachments);
+  }
+
+  if (!message.deleted && message.reactions && Object.keys(message.reactions).length) {
+    wrap.append(buildReactions(message));
+  }
+  return wrap;
+}
+
+function buildAttachment(attachment) {
+  const isImage = /^image\//.test(attachment.type || '');
+  if (isImage) {
+    const img = el('img', { src: attachment.url, alt: attachment.name, loading: 'lazy' });
+    const button = el('button', { class: 'attachment-image', type: 'button', title: attachment.name }, img);
+    button.addEventListener('click', () => {
+      ui.lightbox.querySelector('img').src = attachment.url;
+      ui.lightbox.hidden = false;
+    });
+    return button;
+  }
+  return el('a', {
+    class: 'attachment-file',
+    href: attachment.url,
+    download: attachment.name,
+    target: '_blank',
+    rel: 'noopener'
+  },
+    icon('i-download'),
+    el('span', { class: 'file-meta' },
+      el('span', { class: 'file-name', text: attachment.name }),
+      el('span', { class: 'file-size', text: formatBytes(attachment.size) })
+    )
+  );
+}
+
+function buildReactions(message) {
+  const channelKey = activeChannelKey();
+  const wrap = el('div', { class: 'msg-reactions' });
+  for (const [emoji, userIds] of Object.entries(message.reactions)) {
+    const mine = userIds.includes(state.me.id);
+    const names = userIds.slice(0, 6).map((id) => getUser(id).name).join(', ');
+    const chip = el('button', {
+      class: `reaction-chip${mine ? ' is-mine' : ''}`,
+      type: 'button',
+      title: names,
+      onclick: () => socket.request('react', { channelKey, messageId: message.id, emoji, on: !mine }).catch((error) => toast(error.message, true))
+    }, emoji, el('b', { text: String(userIds.length) }));
+    wrap.append(chip);
+  }
+  const add = el('button', {
+    class: 'reaction-chip reaction-add',
+    type: 'button',
+    'aria-label': 'Add reaction',
+    onclick: (event) => openEmojiPopup(event.currentTarget, (emoji) => {
+      socket.request('react', { channelKey, messageId: message.id, emoji, on: true }).catch((error) => toast(error.message, true));
+    })
+  }, icon('i-emoji'));
+  wrap.append(add);
+  return wrap;
+}
+
+function buildMessageActions(channelKey, message) {
+  const actions = el('div', { class: 'msg-actions' });
+  actions.append(el('button', {
+    class: 'icon-button', type: 'button', title: 'Add reaction',
+    onclick: (event) => openEmojiPopup(event.currentTarget, (emoji) => {
+      socket.request('react', { channelKey, messageId: message.id, emoji, on: true }).catch((error) => toast(error.message, true));
+    })
+  }, icon('i-emoji')));
+
+  actions.append(el('button', {
+    class: 'icon-button', type: 'button', title: 'Reply',
+    onclick: () => startReply(message)
+  }, icon('i-reply')));
+
+  if (message.authorId === state.me.id) {
+    actions.append(el('button', {
+      class: 'icon-button', type: 'button', title: 'Edit',
+      onclick: () => startEditing(message)
+    }, icon('i-edit')));
+  }
+
+  const server = currentServerForView();
+  const mayDelete = message.authorId === state.me.id || (server && isModerator(server));
+  if (mayDelete) {
+    actions.append(el('button', {
+      class: 'icon-button danger', type: 'button', title: 'Delete',
+      onclick: (event) => {
+        if (event.shiftKey) {
+          deleteMessage(channelKey, message.id);
+          return;
+        }
+        confirmModal('Delete message', 'This message will be removed for everyone. Hold Shift while clicking delete to skip this confirmation.', 'Delete', () => deleteMessage(channelKey, message.id));
+      }
+    }, icon('i-trash')));
+  }
+  return actions;
+}
+
+function deleteMessage(channelKey, messageId) {
+  socket.request('del-msg', { channelKey, messageId }).catch((error) => toast(error.message, true));
+}
+
+function currentServerForView() {
+  return (state.view.kind === 'text' || state.view.kind === 'voice') ? getServer(state.view.serverId) : null;
+}
+
+function insertMessage(channelKey, message) {
+  let bucket = state.messages.get(channelKey);
+  if (!bucket) {
+    bucket = { list: [], hasMore: false, loaded: false };
+    state.messages.set(channelKey, bucket);
+  }
+  if (bucket.list.some((candidate) => candidate.id === message.id)) {
+    return;
+  }
+  bucket.list.push(message);
+  if (bucket.list.length > 900) {
+    bucket.list.splice(0, bucket.list.length - 900);
+    bucket.hasMore = true;
+  }
+
+  if (activeChannelKey() === channelKey && !ui.chatView.hidden) {
+    const wasNearBottom = nearBottom();
+    const previous = bucket.list.length > 1 ? bucket.list[bucket.list.length - 2] : null;
+    appendMessageRow(channelKey, message, previous);
+    const row = msgEls.get(message.id);
+    if (row) {
+      row.classList.add('msg-in');
+    }
+    if (wasNearBottom || message.authorId === state.me.id) {
+      scrollToBottom();
+    }
+    if (document.hasFocus() && wasNearBottom) {
+      markRead(channelKey);
+    }
+  }
+}
+
+function applyMessageUpdate(channelKey, message) {
+  const bucket = state.messages.get(channelKey);
+  if (!bucket) {
+    return;
+  }
+  const index = bucket.list.findIndex((candidate) => candidate.id === message.id);
+  if (index === -1) {
+    return;
+  }
+  bucket.list[index] = message;
+
+  const row = msgEls.get(message.id);
+  if (row && activeChannelKey() === channelKey) {
+    const compact = row.dataset.compact === 'true';
+    const fresh = buildMessageRow(channelKey, message, compact);
+    row.replaceWith(fresh);
+    msgEls.set(message.id, fresh);
+  }
+}
+
+function nearBottom() {
+  const node = ui.messageScroll;
+  return node.scrollHeight - node.scrollTop - node.clientHeight < 120;
+}
+
+function scrollToBottom() {
+  ui.messageScroll.scrollTop = ui.messageScroll.scrollHeight;
+}
+
+const sendRead = debounce((channelKey) => {
+  socket.push('read', { channelKey, ts: Date.now() });
+}, 350);
+
+function markRead(channelKey) {
+  const hadMentions = state.mentions[channelKey];
+  state.lastRead[channelKey] = Date.now();
+  if (hadMentions) {
+    delete state.mentions[channelKey];
+  }
+  sendRead(channelKey);
+  renderRail();
+  renderSidebar();
+  updateTitle();
+}
+
+async function loadOlder() {
+  const channelKey = activeChannelKey();
+  const bucket = state.messages.get(channelKey);
+  if (!bucket || !bucket.list.length) {
+    return;
+  }
+  ui.loadOlderButton.disabled = true;
   try {
-    if (payload.description) {
-      const description = payload.description;
-      const readyForOffer = !peer.makingOffer &&
-        (connection.signalingState === 'stable' || peer.isSettingRemoteAnswerPending);
-      const offerCollision = description.type === 'offer' && !readyForOffer;
+    const ack = await socket.request('messages', { channelKey, beforeId: bucket.list[0].id });
+    for (const [id, user] of Object.entries(ack.users || {})) {
+      state.users.set(id, { ...state.users.get(id), ...user });
+    }
+    const fresh = (ack.messages || []).filter(
+      (message) => !bucket.list.some((candidate) => candidate.id === message.id)
+    );
+    bucket.list = fresh.concat(bucket.list);
+    bucket.hasMore = Boolean(ack.hasMore);
 
-      peer.ignoreOffer = !peer.polite && offerCollision;
-      if (peer.ignoreOffer) {
-        return;
-      }
-
-      peer.isSettingRemoteAnswerPending = description.type === 'answer';
-      await connection.setRemoteDescription(description);
-      peer.isSettingRemoteAnswerPending = false;
-      await addPendingCandidates(peer);
-
-      if (description.type === 'offer') {
-        await connection.setLocalDescription();
-        sendSignal(peer.id, { description: connection.localDescription });
-      }
-    } else if (payload.candidate) {
-      if (peer.ignoreOffer) {
-        return;
-      }
-      if (!connection.remoteDescription) {
-        peer.pendingCandidates.push(payload.candidate);
-      } else {
-        await connection.addIceCandidate(payload.candidate);
+    const anchor = ui.messageList.firstElementChild;
+    const offset = anchor ? anchor.getBoundingClientRect().top : 0;
+    rebuildMessageList(channelKey);
+    if (anchor && anchor.dataset && anchor.dataset.id) {
+      const restored = msgEls.get(anchor.dataset.id);
+      if (restored) {
+        ui.messageScroll.scrollTop += restored.getBoundingClientRect().top - offset;
       }
     }
   } catch (error) {
-    if (!peer.ignoreOffer && connection.signalingState !== 'closed') {
-      console.error('Could not apply signaling data:', error);
-    }
+    toast(error.message, true);
+  } finally {
+    ui.loadOlderButton.disabled = false;
   }
 }
 
-function removePeer(id) {
-  const peer = state.peers.get(id);
-  if (!peer) {
+// ============================================================== typing
+
+function renderTyping() {
+  const channelKey = activeChannelKey();
+  ui.typingBar.replaceChildren();
+  if (!channelKey) {
+    return;
+  }
+  const entries = state.typing.get(channelKey);
+  if (!entries || !entries.size) {
+    return;
+  }
+  const now = Date.now();
+  const names = [];
+  for (const [userId, expiresAt] of entries) {
+    if (expiresAt < now) {
+      entries.delete(userId);
+    } else if (userId !== state.me.id) {
+      names.push(getUser(userId).name);
+    }
+  }
+  if (!names.length) {
+    return;
+  }
+  const label = names.length === 1
+    ? `${names[0]} is typing…`
+    : names.length === 2
+      ? `${names[0]} and ${names[1]} are typing…`
+      : 'Several people are typing…';
+  ui.typingBar.append(
+    el('span', { class: 'dots' }, el('i'), el('i'), el('i')),
+    label
+  );
+}
+
+setInterval(renderTyping, 1200);
+
+// ============================================================== composer
+
+let lastTypingSentAt = 0;
+
+function autoSizeComposer() {
+  ui.composerInput.style.height = 'auto';
+  ui.composerInput.style.height = `${Math.min(ui.composerInput.scrollHeight, 200)}px`;
+}
+
+function composerAudience() {
+  const view = state.view;
+  if (view.kind === 'text') {
+    const server = getServer(view.serverId);
+    return server ? server.members.map((member) => getUser(member.userId)) : [];
+  }
+  if (view.kind === 'dm') {
+    const dm = state.dms.get(view.dmId);
+    return dm ? [getUser(dm.otherUserId)] : [];
+  }
+  return [];
+}
+
+function tokenizeMentions(raw) {
+  let content = raw;
+  const names = Array.from(state.mentionTokens.keys()).sort((a, b) => b.length - a.length);
+  for (const name of names) {
+    const id = state.mentionTokens.get(name);
+    content = content.split(`@${name}`).join(`<@${id}>`);
+  }
+  return content;
+}
+
+function detokenizeMentions(content) {
+  return String(content || '').replace(/<@(u_[a-z0-9]+)>/g, (whole, id) => {
+    const user = state.users.get(id);
+    if (user) {
+      state.mentionTokens.set(user.name, id);
+      return `@${user.name}`;
+    }
+    return whole;
+  });
+}
+
+async function sendCurrentMessage() {
+  const channelKey = activeChannelKey();
+  if (!channelKey || (state.view.kind !== 'text' && state.view.kind !== 'dm')) {
+    return;
+  }
+  if (state.pendingAttachments.some((entry) => entry.uploading)) {
+    toast('Hold on — files are still uploading.');
+    return;
+  }
+  const raw = ui.composerInput.value;
+  const content = tokenizeMentions(raw).trim();
+  const attachments = state.pendingAttachments.map((entry) => entry.attachment).filter(Boolean);
+
+  if (state.editingId) {
+    const messageId = state.editingId;
+    if (!content) {
+      stopEditing();
+      return;
+    }
+    try {
+      await socket.request('edit', { channelKey, messageId, content });
+      stopEditing();
+    } catch (error) {
+      toast(error.message, true);
+    }
     return;
   }
 
-  peer.connection.close();
-  peer.tile.remove();
-  state.peers.delete(id);
-  updateParticipantCount();
-}
+  if (!content && !attachments.length) {
+    return;
+  }
 
-function handleSocketMessage(event) {
-  let message;
+  ui.composerInput.value = '';
+  autoSizeComposer();
+  const replyTo = state.replyTo ? state.replyTo.id : null;
+  cancelReply();
+  clearAttachments();
+  state.mentionTokens.clear();
 
   try {
-    message = JSON.parse(event.data);
-  } catch {
+    const ack = await socket.request('send', { channelKey, content, attachments, replyTo });
+    insertMessage(ack.channelKey, ack.message);
+    bumpChannelActivity(ack.channelKey, ack.message.createdAt);
+    state.lastRead[ack.channelKey] = ack.message.createdAt + 1;
+    renderSidebar();
+    renderRail();
+  } catch (error) {
+    toast(error.message, true);
+    ui.composerInput.value = raw;
+    autoSizeComposer();
+  }
+}
+
+function startReply(message) {
+  stopEditing();
+  state.replyTo = message;
+  ui.replyBarName.textContent = getUser(message.authorId).name;
+  ui.replyBar.hidden = false;
+  ui.composerInput.focus();
+}
+
+function cancelReply() {
+  state.replyTo = null;
+  ui.replyBar.hidden = true;
+}
+
+function startEditing(message) {
+  cancelReply();
+  state.editingId = message.id;
+  ui.composerInput.value = detokenizeMentions(message.content);
+  autoSizeComposer();
+  ui.composerInput.focus();
+  ui.composerInput.setSelectionRange(ui.composerInput.value.length, ui.composerInput.value.length);
+  ui.replyBarName.textContent = '';
+  ui.replyBar.hidden = false;
+  ui.replyBar.firstElementChild.textContent = 'Editing message — Enter to save, Esc to cancel';
+}
+
+function stopEditing() {
+  if (!state.editingId) {
     return;
   }
+  state.editingId = null;
+  ui.composerInput.value = '';
+  autoSizeComposer();
+  ui.replyBar.hidden = true;
+  const label = ui.replyBar.firstElementChild;
+  label.replaceChildren('Replying to ', el('strong', { id: 'replyBarName' }));
+  ui.replyBarName = label.querySelector('strong') || ui.replyBarName;
+}
 
-  if (message.type === 'welcome') {
-    clearTimeout(state.joinTimeout);
-    state.selfId = message.id;
-    state.roomId = message.roomId;
-    state.joined = true;
-    state.joining = false;
-    enterMeeting(message.peers || []);
-    if (state.joinResolve) {
-      state.joinResolve();
-    }
-  } else if (message.type === 'peer-joined') {
-    createPeer(message.peer);
-  } else if (message.type === 'peer-left') {
-    removePeer(message.id);
-  } else if (message.type === 'signal') {
-    handleSignal(message);
-  } else if (message.type === 'media-state') {
-    const peer = state.peers.get(message.id);
-    if (peer) {
-      peer.media = message.media;
-      updateTileMedia(peer.tile, peer.media, peer.stream);
-    }
-  } else if (message.type === 'error') {
-    const error = new Error(message.message || 'Could not join the room.');
-    if (!state.joined && state.joinReject) {
-      clearTimeout(state.joinTimeout);
-      state.joinReject(error);
+// -------- attachments
+
+function clearAttachments() {
+  state.pendingAttachments = [];
+  renderAttachPreview();
+}
+
+function renderAttachPreview() {
+  ui.attachPreview.replaceChildren();
+  ui.attachPreview.hidden = !state.pendingAttachments.length;
+  for (const entry of state.pendingAttachments) {
+    const chip = el('span', { class: `attach-chip${entry.uploading ? ' is-uploading' : ''}` });
+    if (entry.attachment && /^image\//.test(entry.attachment.type)) {
+      chip.append(el('img', { src: entry.attachment.url, alt: '' }));
     } else {
-      showToast(error.message, true);
+      chip.append(icon('i-attach'));
     }
+    chip.append(el('span', { class: 'attach-name', text: entry.name }));
+    chip.append(el('button', {
+      class: 'icon-button tiny', type: 'button', 'aria-label': 'Remove attachment',
+      onclick: () => {
+        state.pendingAttachments = state.pendingAttachments.filter((candidate) => candidate !== entry);
+        renderAttachPreview();
+      }
+    }, icon('i-x')));
+    ui.attachPreview.append(chip);
   }
 }
 
-function websocketUrl() {
-  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//${location.host}/signal`;
-}
-
-function connectToRoom() {
-  return new Promise((resolve, reject) => {
-    state.joinResolve = resolve;
-    state.joinReject = reject;
-    state.intentionalClose = false;
-    state.socket = new WebSocket(websocketUrl());
-
-    state.joinTimeout = setTimeout(() => {
-      reject(new Error('The room server did not respond. Try again.'));
-      if (state.socket) {
-        state.socket.close();
-      }
-    }, 10_000);
-
-    state.socket.addEventListener('open', () => {
-      send({
-        type: 'join',
-        roomId: state.roomId,
-        name: state.displayName,
-        media: getLocalMediaState()
+async function uploadFiles(files) {
+  for (const file of files) {
+    if (state.pendingAttachments.length >= 6) {
+      toast('You can attach up to 6 files per message.');
+      break;
+    }
+    const entry = { name: file.name, uploading: true, attachment: null };
+    state.pendingAttachments.push(entry);
+    renderAttachPreview();
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'X-File-Name': btoa(unescape(encodeURIComponent(file.name || 'file'))),
+          'Content-Type': 'application/octet-stream'
+        },
+        body: file
       });
-    });
-
-    state.socket.addEventListener('message', handleSocketMessage);
-
-    state.socket.addEventListener('error', () => {
-      if (!state.joined) {
-        clearTimeout(state.joinTimeout);
-        reject(new Error('Could not connect to the room server.'));
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Upload failed.');
       }
-    });
-
-    state.socket.addEventListener('close', () => {
-      if (!state.joined) {
-        clearTimeout(state.joinTimeout);
-        reject(new Error('The room connection closed before you joined.'));
-      } else if (!state.intentionalClose) {
-        elements.connectionBanner.hidden = false;
-      }
-    });
-  });
+      entry.attachment = data.attachment;
+      entry.uploading = false;
+    } catch (error) {
+      state.pendingAttachments = state.pendingAttachments.filter((candidate) => candidate !== entry);
+      toast(error.message, true);
+    }
+    renderAttachPreview();
+  }
 }
 
-function startMeetingTimer() {
-  clearInterval(state.timer);
-  state.startedAt = Date.now();
+// -------- mention autocomplete
 
-  const update = () => {
-    const elapsedSeconds = Math.floor((Date.now() - state.startedAt) / 1000);
-    const hours = Math.floor(elapsedSeconds / 3600);
-    const minutes = Math.floor((elapsedSeconds % 3600) / 60);
-    const seconds = elapsedSeconds % 60;
-    elements.elapsedTime.textContent = hours
-      ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-      : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+const mentionState = { open: false, matches: [], highlighted: 0, start: 0 };
+
+function updateMentionPopup() {
+  const input = ui.composerInput;
+  const caret = input.selectionStart;
+  const before = input.value.slice(0, caret);
+  const match = before.match(/(?:^|\s)@([\w.\- ]{0,30})$/);
+  if (!match || (state.view.kind !== 'text' && state.view.kind !== 'dm')) {
+    closeMentionPopup();
+    return;
+  }
+  const query = match[1].toLowerCase();
+  const audience = composerAudience().filter((user) => user.id !== state.me.id);
+  const matches = audience
+    .filter((user) => user.name.toLowerCase().includes(query) || (user.username || '').includes(query))
+    .slice(0, 8);
+  if (!matches.length) {
+    closeMentionPopup();
+    return;
+  }
+
+  mentionState.open = true;
+  mentionState.matches = matches;
+  mentionState.highlighted = Math.min(mentionState.highlighted, matches.length - 1);
+  mentionState.start = caret - match[1].length - 1;
+
+  ui.mentionPopup.replaceChildren();
+  matches.forEach((user, index) => {
+    const option = el('button', {
+      class: `mention-option${index === mentionState.highlighted ? ' is-highlighted' : ''}`,
+      type: 'button',
+      onclick: () => pickMention(index)
+    },
+      avatarEl(user),
+      el('span', { text: user.name }),
+      user.username ? el('small', { text: ` @${user.username}`, style: 'color: var(--text-faint)' }) : null
+    );
+    ui.mentionPopup.append(option);
+  });
+
+  const rect = ui.composerInput.getBoundingClientRect();
+  ui.mentionPopup.hidden = false;
+  ui.mentionPopup.style.left = `${rect.left}px`;
+  ui.mentionPopup.style.bottom = `${window.innerHeight - rect.top + 8}px`;
+  ui.mentionPopup.style.top = 'auto';
+}
+
+function pickMention(index) {
+  const user = mentionState.matches[index];
+  if (!user) {
+    return;
+  }
+  const input = ui.composerInput;
+  const caret = input.selectionStart;
+  state.mentionTokens.set(user.name, user.id);
+  input.value = `${input.value.slice(0, mentionState.start)}@${user.name} ${input.value.slice(caret)}`;
+  const position = mentionState.start + user.name.length + 2;
+  input.setSelectionRange(position, position);
+  input.focus();
+  closeMentionPopup();
+  autoSizeComposer();
+}
+
+function closeMentionPopup() {
+  mentionState.open = false;
+  ui.mentionPopup.hidden = true;
+}
+
+// ============================================================== voice view
+
+function renderVoiceView() {
+  if (state.view.kind !== 'voice') {
+    return;
+  }
+  const { serverId, channelId } = state.view;
+  const channel = getChannel(serverId, channelId);
+  if (!channel) {
+    return;
+  }
+  const channelKey = keyForText(serverId, channelId);
+  const joinedHere = voice.active && voice.channelKey === channelKey;
+  const participants = state.voiceStates.get(channelKey) || [];
+
+  ui.voicePrejoin.hidden = joinedHere;
+  ui.voiceStage.hidden = !joinedHere;
+
+  if (!joinedHere) {
+    ui.voicePrejoinTitle.textContent = channel.name;
+    ui.voicePrejoinCount.textContent = participants.length
+      ? `${participants.length} ${participants.length === 1 ? 'person is' : 'people are'} here (limit ${state.voiceLimit})`
+      : 'No one is here yet. Be the first!';
+    ui.voicePrejoinFaces.replaceChildren();
+    for (const participant of participants.slice(0, 10)) {
+      ui.voicePrejoinFaces.append(avatarEl(getUser(participant.userId)));
+    }
+    return;
+  }
+
+  renderVoiceTiles(channelKey, participants);
+  renderVoiceControls();
+  renderScreenStage(participants);
+}
+
+function renderVoiceTiles(channelKey, participants) {
+  const seen = new Set();
+
+  const ensureTile = (key, user, media, stream, isLocal, connected) => {
+    seen.add(key);
+    let tile = voiceTileEls.get(key);
+    if (!tile) {
+      tile = el('div', { class: 'voice-tile', dataset: { tileKey: key } },
+        el('video', { autoplay: true, playsinline: true, muted: true }),
+        avatarEl(user),
+        el('span', { class: 'voice-tile-conn', text: 'Connecting' }),
+        el('span', { class: 'voice-tile-footer' }, el('span', { class: 'voice-tile-name' }))
+      );
+      voiceTileEls.set(key, tile);
+      ui.voiceGrid.append(tile);
+    }
+    tile.classList.toggle('is-local', isLocal);
+    tile.classList.toggle('is-connected', connected);
+
+    const video = tile.querySelector('video');
+    const cameraOn = Boolean(media && media.video && stream && stream.getVideoTracks().some((track) => track.readyState === 'live'));
+    tile.classList.toggle('camera-on', cameraOn);
+    if (stream && video.srcObject !== stream) {
+      video.srcObject = stream;
+    }
+    video.muted = true; // audio plays through the persistent audio elements
+
+    const nameEl = tile.querySelector('.voice-tile-name');
+    nameEl.replaceChildren(...[
+      user.name + (isLocal ? ' (you)' : ''),
+      media && !media.audio ? icon('i-mic-off', 'tile-muted') : null,
+      media && media.screen ? icon('i-screen', 'tile-sharing') : null
+    ].filter(Boolean));
+    return tile;
   };
 
-  update();
-  state.timer = setInterval(update, 1000);
-}
+  // Local tile first.
+  ensureTile('self', state.me, voice.media(), voice.localStream, true, true);
 
-function inviteUrl() {
-  const url = new URL(location.href);
-  url.search = '';
-  url.hash = '';
-  url.searchParams.set('room', state.roomId);
-  return url.toString();
-}
-
-function enterMeeting(existingPeers) {
-  const url = new URL(inviteUrl());
-  history.replaceState({}, '', `${url.pathname}${url.search}`);
-
-  elements.prejoinView.hidden = true;
-  elements.meetingView.hidden = false;
-  elements.connectionBanner.hidden = true;
-  document.body.classList.add('in-meeting');
-
-  elements.meetingRoomName.textContent = state.roomId;
-  elements.roomCodeDisplay.textContent = state.roomId;
-  elements.videoGrid.replaceChildren();
-  createParticipantTile(state.selfId, state.displayName, getLocalMediaState(), state.localStream, true);
-
-  for (const peerInfo of existingPeers) {
-    createPeer(peerInfo);
+  for (const participant of participants) {
+    if (participant.connId === state.connId) {
+      continue;
+    }
+    const peer = voice.peers.get(participant.connId);
+    ensureTile(
+      participant.connId,
+      getUser(participant.userId),
+      participant.media,
+      peer ? peer.cameraStream : null,
+      false,
+      Boolean(peer && peer.connected)
+    );
   }
 
-  syncLocalMediaUi();
-  startMeetingTimer();
-  elements.leaveButton.focus();
-}
-
-async function copyInvite() {
-  const text = inviteUrl();
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
-    const input = document.createElement('input');
-    input.value = text;
-    input.style.position = 'fixed';
-    input.style.opacity = '0';
-    document.body.append(input);
-    input.select();
-    document.execCommand('copy');
-    input.remove();
+  for (const [key, tile] of voiceTileEls) {
+    if (!seen.has(key)) {
+      tile.remove();
+      voiceTileEls.delete(key);
+    }
   }
-  showToast('Invitation link copied.');
+  ui.voiceGrid.dataset.count = String(Math.min(seen.size, 9));
 }
 
-async function toggleTrack(kind) {
-  let track = getLiveTrack(kind);
+function renderVoiceControls() {
+  const media = voice.media();
+  ui.vMicButton.classList.toggle('is-off', !media.audio);
+  ui.vMicButton.setAttribute('aria-pressed', String(media.audio));
+  ui.vCamButton.classList.toggle('is-off', !media.video);
+  ui.vCamButton.setAttribute('aria-pressed', String(media.video));
+  ui.vScreenButton.classList.toggle('is-live', media.screen);
+  ui.vScreenButton.setAttribute('aria-pressed', String(media.screen));
+}
 
+function renderScreenStage(participants) {
+  // Choose which screen share to feature.
+  const sharers = [];
+  if (voice.screenStream) {
+    sharers.push({ key: 'self', stream: voice.screenStream, name: `${state.me.name} (you)` });
+  }
+  for (const participant of participants) {
+    if (participant.connId === state.connId || !participant.media || !participant.media.screen) {
+      continue;
+    }
+    const peer = voice.peers.get(participant.connId);
+    if (peer && peer.screenStream) {
+      sharers.push({ key: participant.connId, stream: peer.screenStream, name: getUser(participant.userId).name });
+    }
+  }
+
+  if (!sharers.length) {
+    state.focusedScreen = null;
+    ui.screenStage.hidden = true;
+    ui.voiceStage.classList.remove('has-screen');
+    ui.screenVideo.srcObject = null;
+    ui.screenSelfNote.hidden = true;
+    return;
+  }
+
+  let focused = sharers.find((sharer) => sharer.key === state.focusedScreen);
+  if (!focused) {
+    focused = sharers.find((sharer) => sharer.key !== 'self') || sharers[0];
+    state.focusedScreen = focused.key;
+  }
+
+  ui.screenStage.hidden = false;
+  ui.voiceStage.classList.add('has-screen');
+
+  const isSelf = focused.key === 'self';
+  ui.screenSelfNote.hidden = !isSelf;
+  ui.screenLabel.hidden = isSelf;
+  if (isSelf) {
+    // Never preview your own share back at you — that is an infinite mirror.
+    if (ui.screenVideo.srcObject) {
+      ui.screenVideo.srcObject = null;
+    }
+  } else {
+    if (ui.screenVideo.srcObject !== focused.stream) {
+      ui.screenVideo.srcObject = focused.stream;
+    }
+    ui.screenVideo.muted = true;
+    ui.screenLabel.replaceChildren(icon('i-screen'), ` ${focused.name} is sharing`);
+  }
+}
+
+/** Remote audio must survive leaving the voice view, so it lives in hidden elements. */
+function syncVoiceAudio() {
+  const wanted = new Set();
+  if (voice.active) {
+    for (const peer of voice.peers.values()) {
+      if (peer.cameraStream && peer.cameraStream.getAudioTracks().length) {
+        wanted.add(peer.connId);
+        let audio = voiceAudioEls.get(peer.connId);
+        if (!audio) {
+          audio = el('audio', { autoplay: true });
+          audio.style.display = 'none';
+          document.body.append(audio);
+          voiceAudioEls.set(peer.connId, audio);
+        }
+        if (audio.srcObject !== peer.cameraStream) {
+          audio.srcObject = peer.cameraStream;
+          audio.play().catch(() => {});
+        }
+      }
+    }
+  }
+  for (const [connId, audio] of voiceAudioEls) {
+    if (!wanted.has(connId)) {
+      audio.srcObject = null;
+      audio.remove();
+      voiceAudioEls.delete(connId);
+    }
+  }
+}
+
+async function joinVoice(withCamera) {
+  const { serverId, channelId } = state.view;
+  const channelKey = keyForText(serverId, channelId);
   try {
-    if (!track) {
-      track = await acquireSingleTrack(kind);
-      track.enabled = true;
+    await voice.join(channelKey, { video: withCamera });
+    beep('join');
+  } catch (error) {
+    const message = error && error.name === 'NotAllowedError'
+      ? 'Microphone access was blocked. Allow it in your browser settings.'
+      : error.message || 'Could not join the voice channel.';
+    toast(message, true);
+  }
+  renderVoiceView();
+  renderVoiceDock();
+  renderSidebar();
+}
+
+// ============================================================== popovers
+
+function closePopovers() {
+  ui.popover.hidden = true;
+  ui.emojiPopup.hidden = true;
+  closeMentionPopup();
+}
+
+function positionFloating(node, anchor) {
+  const rect = anchor.getBoundingClientRect();
+  node.style.visibility = 'hidden';
+  node.hidden = false;
+  const { width, height } = node.getBoundingClientRect();
+  let left = Math.min(rect.left, window.innerWidth - width - 12);
+  let top = rect.bottom + 8;
+  if (top + height > window.innerHeight - 12) {
+    top = Math.max(12, rect.top - height - 8);
+  }
+  node.style.left = `${Math.max(12, left)}px`;
+  node.style.top = `${top}px`;
+  node.style.bottom = 'auto';
+  node.style.visibility = 'visible';
+}
+
+function openUserPopover(anchor, user, server) {
+  ui.popover.replaceChildren();
+  const fresh = state.users.get(user.id) || user;
+
+  ui.popover.append(el('div', { class: 'popover-head' },
+    avatarEl(fresh),
+    el('span', { class: 'pop-name' },
+      el('strong', { text: fresh.name }),
+      el('small', { text: fresh.guest ? 'Guest account' : `@${fresh.username}` })
+    )
+  ));
+
+  if (fresh.id !== state.me.id) {
+    ui.popover.append(el('button', {
+      class: 'popover-item', type: 'button',
+      onclick: async () => {
+        closePopovers();
+        try {
+          const ack = await socket.request('dm-open', { userId: fresh.id });
+          state.users.set(ack.user.id, { ...state.users.get(ack.user.id), ...ack.user });
+          if (ack.user.online) {
+            state.online.add(ack.user.id);
+          }
+          state.dms.set(ack.dm.id, ack.dm);
+          openDm(ack.dm.id);
+        } catch (error) {
+          toast(error.message, true);
+        }
+      }
+    }, icon('i-users'), 'Send a direct message'));
+  }
+
+  if (server && fresh.id !== state.me.id) {
+    const membership = server.members.find((member) => member.userId === fresh.id);
+    if (server.myRole === 'owner' && membership) {
+      const makeAdmin = membership.role !== 'admin';
+      ui.popover.append(el('button', {
+        class: 'popover-item', type: 'button',
+        onclick: () => {
+          closePopovers();
+          socket.request('set-role', { serverId: server.id, userId: fresh.id, role: makeAdmin ? 'admin' : 'member' })
+            .then(() => toast(makeAdmin ? `${fresh.name} is now an admin.` : `${fresh.name} is no longer an admin.`))
+            .catch((error) => toast(error.message, true));
+        }
+      }, icon('i-shield'), makeAdmin ? 'Make server admin' : 'Remove admin role'));
+    }
+    if (canModerate(server, fresh.id)) {
+      ui.popover.append(el('button', {
+        class: 'popover-item danger', type: 'button',
+        onclick: () => {
+          closePopovers();
+          confirmModal('Kick member', `${fresh.name} will be removed from ${server.name}. They can rejoin with an invite.`, 'Kick', () => {
+            socket.request('kick', { serverId: server.id, userId: fresh.id }).catch((error) => toast(error.message, true));
+          });
+        }
+      }, icon('i-x'), 'Kick from server'));
+      ui.popover.append(el('button', {
+        class: 'popover-item danger', type: 'button',
+        onclick: () => {
+          closePopovers();
+          confirmModal('Ban member', `${fresh.name} will be removed from ${server.name} and won't be able to rejoin.`, 'Ban', () => {
+            socket.request('ban', { serverId: server.id, userId: fresh.id }).catch((error) => toast(error.message, true));
+          });
+        }
+      }, icon('i-trash'), 'Ban from server'));
+    }
+  }
+
+  positionFloating(ui.popover, anchor);
+}
+
+function openServerMenu(anchor) {
+  const server = currentServerForView();
+  if (!server) {
+    return;
+  }
+  ui.popover.replaceChildren();
+
+  ui.popover.append(el('button', {
+    class: 'popover-item', type: 'button',
+    onclick: () => { closePopovers(); openInviteModal(server); }
+  }, icon('i-link'), 'Invite people'));
+
+  if (isModerator(server)) {
+    ui.popover.append(el('button', {
+      class: 'popover-item', type: 'button',
+      onclick: () => { closePopovers(); openCreateChannelModal(server, 'text'); }
+    }, icon('i-plus'), 'Create channel'));
+    ui.popover.append(el('button', {
+      class: 'popover-item', type: 'button',
+      onclick: () => { closePopovers(); openServerSettings(server); }
+    }, icon('i-settings'), 'Server settings'));
+  }
+
+  if (server.myRole !== 'owner') {
+    ui.popover.append(el('button', {
+      class: 'popover-item danger', type: 'button',
+      onclick: () => {
+        closePopovers();
+        confirmModal('Leave server', `You will leave ${server.name}. You can rejoin later with an invite link.`, 'Leave', () => {
+          socket.request('leave-server', { serverId: server.id }).catch((error) => toast(error.message, true));
+        });
+      }
+    }, icon('i-logout'), 'Leave server'));
+  } else {
+    ui.popover.append(el('button', {
+      class: 'popover-item danger', type: 'button',
+      onclick: () => { closePopovers(); confirmDeleteServer(server); }
+    }, icon('i-trash'), 'Delete server'));
+  }
+
+  positionFloating(ui.popover, anchor);
+}
+
+function openEmojiPopup(anchor, onPick) {
+  ui.emojiPopup.replaceChildren();
+  const grid = el('div', { class: 'emoji-grid' });
+  const quick = el('div', { class: 'emoji-grid' });
+  for (const emoji of QUICK_REACTIONS) {
+    quick.append(el('button', { type: 'button', text: emoji, onclick: () => { ui.emojiPopup.hidden = true; onPick(emoji); } }));
+  }
+  ui.emojiPopup.append(el('p', { class: 'emoji-group-label', text: 'Quick' }), quick);
+  for (const group of EMOJI_GROUPS) {
+    grid.append(el('p', { class: 'emoji-group-label', text: group.label }));
+    for (const emoji of group.emojis) {
+      grid.append(el('button', { type: 'button', text: emoji, onclick: () => { ui.emojiPopup.hidden = true; onPick(emoji); } }));
+    }
+  }
+  ui.emojiPopup.append(grid);
+  positionFloating(ui.emojiPopup, anchor);
+}
+
+// ============================================================== modals
+
+function openModal(build) {
+  ui.modalCard.replaceChildren();
+  ui.modalCard.append(el('button', { class: 'icon-button modal-close', type: 'button', 'aria-label': 'Close', onclick: closeModal }, icon('i-x')));
+  build(ui.modalCard);
+  ui.modalRoot.hidden = false;
+  const firstInput = ui.modalCard.querySelector('input');
+  if (firstInput) {
+    firstInput.focus();
+  }
+}
+
+function closeModal() {
+  ui.modalRoot.hidden = true;
+  ui.modalCard.replaceChildren();
+}
+
+function confirmModal(title, text, actionLabel, onConfirm) {
+  openModal((card) => {
+    card.append(
+      el('h2', { text: title }),
+      el('p', { class: 'modal-sub', text }),
+      el('div', { class: 'modal-buttons' },
+        el('button', { class: 'ghost-button', type: 'button', text: 'Cancel', onclick: closeModal }),
+        el('button', {
+          class: 'ghost-button danger', type: 'button', text: actionLabel,
+          onclick: () => { closeModal(); onConfirm(); }
+        })
+      )
+    );
+  });
+}
+
+function openAddServerModal(initial = 'choose') {
+  openModal((card) => {
+    card.append(el('h2', { text: 'Add a server' }));
+    const sub = el('p', { class: 'modal-sub', text: 'Create your own community, or join one with an invite.' });
+    card.append(sub);
+
+    const body = el('div', {});
+    card.append(body);
+
+    const showChoose = () => {
+      body.replaceChildren(el('div', { class: 'choice-row' },
+        el('button', { class: 'choice-card', type: 'button', onclick: showCreate }, icon('i-plus'), 'Create my own'),
+        el('button', { class: 'choice-card', type: 'button', onclick: showJoin }, icon('i-link'), 'Join with invite')
+      ));
+    };
+
+    const showCreate = () => {
+      const nameInput = el('input', { type: 'text', maxlength: '50', placeholder: "e.g. Diaa's hangout" });
+      const iconInput = el('input', { type: 'text', maxlength: '4', placeholder: '🚀 (optional emoji)' });
+      const error = el('p', { class: 'form-error' });
+      const form = el('form', {
+        class: 'modal-form',
+        onsubmit: async (event) => {
+          event.preventDefault();
+          try {
+            const ack = await socket.request('create-server', { name: nameInput.value, icon: iconInput.value });
+            closeModal();
+            applyServerAdded(ack.server);
+            openServer(ack.server.id);
+            openInviteModal(ack.server);
+          } catch (requestError) {
+            error.textContent = requestError.message;
+          }
+        }
+      },
+        el('label', {}, 'Server name', nameInput),
+        el('label', {}, 'Icon', iconInput),
+        state.me.guest ? el('p', { class: 'temp-hint' },
+          icon('i-refresh'),
+          ` Guest servers are temporary — this one will close ${state.guestTtlHours} hours after creation, and you can host one at a time. Register a free account for unlimited permanent servers.`
+        ) : null,
+        error,
+        el('div', { class: 'modal-buttons' },
+          el('button', { class: 'ghost-button', type: 'button', text: 'Back', onclick: showChoose }),
+          el('button', { class: 'primary-button', type: 'submit', text: state.me.guest ? 'Create temporary server' : 'Create server' })
+        )
+      );
+      body.replaceChildren(form);
+      nameInput.focus();
+    };
+
+    const showJoin = () => {
+      const codeInput = el('input', { type: 'text', maxlength: '120', placeholder: 'Invite code or link' });
+      const error = el('p', { class: 'form-error' });
+      const form = el('form', {
+        class: 'modal-form',
+        onsubmit: async (event) => {
+          event.preventDefault();
+          const raw = codeInput.value.trim();
+          const match = raw.match(/invite\/([a-z0-9]+)/i);
+          const code = (match ? match[1] : raw).toLowerCase();
+          try {
+            const ack = await socket.request('join-invite', { code });
+            closeModal();
+            applyServerAdded(ack.server, ack.users);
+            openServer(ack.server.id);
+            toast(`Welcome to ${ack.server.name}!`);
+          } catch (requestError) {
+            error.textContent = requestError.message;
+          }
+        }
+      },
+        el('label', {}, 'Invite', codeInput),
+        error,
+        el('div', { class: 'modal-buttons' },
+          el('button', { class: 'ghost-button', type: 'button', text: 'Back', onclick: showChoose }),
+          el('button', { class: 'primary-button', type: 'submit', text: 'Join server' })
+        )
+      );
+      body.replaceChildren(form);
+      codeInput.focus();
+    };
+
+    if (initial === 'create') {
+      showCreate();
+    } else if (initial === 'join') {
+      showJoin();
     } else {
-      track.enabled = !track.enabled;
+      showChoose();
+    }
+  });
+}
+
+function openInviteModal(server) {
+  const link = `${location.origin}/invite/${server.inviteCode}`;
+  openModal((card) => {
+    const codeBox = el('code', { text: link });
+    card.append(
+      el('h2', { text: `Invite people to ${server.name}` }),
+      el('p', { class: 'modal-sub', text: 'Anyone with this link can join — they can even hop in as a guest without creating an account.' }),
+      el('div', { class: 'invite-link-box' },
+        codeBox,
+        el('button', {
+          class: 'ghost-button small', type: 'button', text: 'Copy',
+          onclick: async (event) => {
+            await copyText(link);
+            event.currentTarget.textContent = 'Copied!';
+            setTimeout(() => { event.target && (event.target.textContent = 'Copy'); }, 1500);
+          }
+        })
+      )
+    );
+    if (isModerator(server)) {
+      card.append(el('div', { class: 'danger-zone' },
+        el('button', {
+          class: 'ghost-button small', type: 'button',
+          onclick: async () => {
+            try {
+              const ack = await socket.request('regen-invite', { serverId: server.id });
+              codeBox.textContent = `${location.origin}/invite/${ack.inviteCode}`;
+              toast('Old invite links no longer work.');
+            } catch (error) {
+              toast(error.message, true);
+            }
+          }
+        }, icon('i-refresh'), 'Reset invite link')
+      ));
+    }
+  });
+}
+
+function openCreateChannelModal(server, initialKind) {
+  openModal((card) => {
+    card.append(el('h2', { text: 'Create channel' }), el('p', { class: 'modal-sub', text: `in ${server.name}` }));
+    let kind = initialKind || 'text';
+    const textChoice = el('button', { class: 'choice-card', type: 'button' }, icon('i-hash'), 'Text');
+    const voiceChoice = el('button', { class: 'choice-card', type: 'button' }, icon('i-speaker'), 'Voice');
+    const syncKind = () => {
+      textChoice.classList.toggle('is-selected', kind === 'text');
+      voiceChoice.classList.toggle('is-selected', kind === 'voice');
+      nameInput.placeholder = kind === 'text' ? 'new-channel' : 'Game night';
+    };
+    textChoice.addEventListener('click', () => { kind = 'text'; syncKind(); });
+    voiceChoice.addEventListener('click', () => { kind = 'voice'; syncKind(); });
+
+    const nameInput = el('input', { type: 'text', maxlength: '32' });
+    const topicInput = el('input', { type: 'text', maxlength: '250', placeholder: 'What is this channel about? (optional)' });
+    const error = el('p', { class: 'form-error' });
+
+    card.append(el('form', {
+      class: 'modal-form',
+      onsubmit: async (event) => {
+        event.preventDefault();
+        try {
+          const ack = await socket.request('create-channel', {
+            serverId: server.id, kind, name: nameInput.value, topic: topicInput.value
+          });
+          closeModal();
+          // The channel-added broadcast may not have landed yet; apply now.
+          const fresh = getServer(server.id);
+          if (fresh && !fresh.channels.some((candidate) => candidate.id === ack.channel.id)) {
+            fresh.channels.push(ack.channel);
+          }
+          if (ack.channel.type === 'text') {
+            openTextChannel(server.id, ack.channel.id);
+          } else {
+            openVoiceChannel(server.id, ack.channel.id);
+          }
+        } catch (requestError) {
+          error.textContent = requestError.message;
+        }
+      }
+    },
+      el('div', { class: 'choice-row' }, textChoice, voiceChoice),
+      el('label', {}, 'Channel name', nameInput),
+      el('label', {}, 'Topic', topicInput),
+      error,
+      el('div', { class: 'modal-buttons' },
+        el('button', { class: 'ghost-button', type: 'button', text: 'Cancel', onclick: closeModal }),
+        el('button', { class: 'primary-button', type: 'submit', text: 'Create channel' })
+      )
+    ));
+    syncKind();
+    nameInput.focus();
+  });
+}
+
+function openChannelSettings(server, channel) {
+  openModal((card) => {
+    const nameInput = el('input', { type: 'text', maxlength: '32', value: channel.name });
+    const topicInput = el('input', { type: 'text', maxlength: '250', value: channel.topic || '' });
+    const error = el('p', { class: 'form-error' });
+    card.append(
+      el('h2', { text: channel.type === 'text' ? `#${channel.name}` : channel.name }),
+      el('p', { class: 'modal-sub', text: 'Channel settings' }),
+      el('form', {
+        class: 'modal-form',
+        onsubmit: async (event) => {
+          event.preventDefault();
+          try {
+            await socket.request('update-channel', {
+              serverId: server.id, channelId: channel.id, name: nameInput.value, topic: topicInput.value
+            });
+            closeModal();
+          } catch (requestError) {
+            error.textContent = requestError.message;
+          }
+        }
+      },
+        el('label', {}, 'Name', nameInput),
+        el('label', {}, 'Topic', topicInput),
+        error,
+        el('div', { class: 'modal-buttons' },
+          el('button', { class: 'ghost-button', type: 'button', text: 'Cancel', onclick: closeModal }),
+          el('button', { class: 'primary-button', type: 'submit', text: 'Save' })
+        )
+      ),
+      el('div', { class: 'danger-zone' },
+        el('button', {
+          class: 'ghost-button danger', type: 'button',
+          onclick: () => {
+            confirmModal('Delete channel', `#${channel.name} and its full message history will be deleted for everyone.`, 'Delete channel', () => {
+              socket.request('delete-channel', { serverId: server.id, channelId: channel.id })
+                .catch((error2) => toast(error2.message, true));
+            });
+          }
+        }, icon('i-trash'), 'Delete channel')
+      )
+    );
+  });
+}
+
+function openServerSettings(server) {
+  openModal((card) => {
+    const nameInput = el('input', { type: 'text', maxlength: '50', value: server.name });
+    const iconInput = el('input', { type: 'text', maxlength: '4', value: server.icon || '' });
+    const error = el('p', { class: 'form-error' });
+
+    card.append(
+      el('h2', { text: 'Server settings' }),
+      el('p', { class: 'modal-sub', text: server.name }),
+      el('form', {
+        class: 'modal-form',
+        onsubmit: async (event) => {
+          event.preventDefault();
+          try {
+            await socket.request('update-server', { serverId: server.id, name: nameInput.value, icon: iconInput.value });
+            closeModal();
+          } catch (requestError) {
+            error.textContent = requestError.message;
+          }
+        }
+      },
+        el('label', {}, 'Server name', nameInput),
+        el('label', {}, 'Icon (emoji)', iconInput),
+        error,
+        el('div', { class: 'modal-buttons' },
+          el('button', { class: 'ghost-button', type: 'button', text: 'Cancel', onclick: closeModal }),
+          el('button', { class: 'primary-button', type: 'submit', text: 'Save' })
+        )
+      )
+    );
+
+    const bans = server.bans || [];
+    if (bans.length) {
+      const list = el('div', { class: 'settings-list' });
+      for (const bannedId of bans) {
+        const user = getUser(bannedId);
+        list.append(el('div', { class: 'settings-row' },
+          el('span', { class: 'row-label' }, el('strong', { text: user.name }), el('small', { text: 'Banned' })),
+          el('button', {
+            class: 'ghost-button small', type: 'button', text: 'Unban',
+            onclick: (event) => {
+              socket.request('unban', { serverId: server.id, userId: bannedId })
+                .then(() => event.target.closest('.settings-row').remove())
+                .catch((error2) => toast(error2.message, true));
+            }
+          })
+        ));
+      }
+      card.append(el('div', { class: 'danger-zone' }, el('p', { class: 'sidebar-label', text: 'Bans' }), list));
     }
 
-    syncLocalMediaUi();
-    sendMediaState();
-  } catch (error) {
-    showToast(mediaErrorMessage(error), true);
-  }
+    if (server.myRole === 'owner') {
+      card.append(el('div', { class: 'danger-zone' },
+        el('button', {
+          class: 'ghost-button danger', type: 'button',
+          onclick: () => confirmDeleteServer(server)
+        }, icon('i-trash'), 'Delete server permanently')
+      ));
+    }
+  });
 }
 
-function resetMeeting() {
-  clearInterval(state.timer);
-  state.timer = null;
-  state.intentionalClose = true;
-
-  send({ type: 'leave' });
-  if (state.socket && state.socket.readyState < WebSocket.CLOSING) {
-    state.socket.close(1000, 'Left meeting');
-  }
-
-  for (const peer of state.peers.values()) {
-    peer.connection.close();
-  }
-  state.peers.clear();
-
-  for (const track of state.localStream.getTracks()) {
-    track.stop();
-  }
-  state.localStream = new MediaStream();
-  state.socket = null;
-  state.selfId = null;
-  state.joined = false;
-  state.joining = false;
-
-  elements.videoGrid.replaceChildren();
-  elements.meetingView.hidden = true;
-  elements.prejoinView.hidden = false;
-  elements.connectionBanner.hidden = true;
-  elements.joinButton.disabled = false;
-  elements.joinButtonLabel.textContent = 'Enter the room';
-  elements.permissionHint.textContent = 'You left the room. Your camera and microphone are off.';
-  document.body.classList.remove('in-meeting');
-  syncLocalMediaUi();
-  elements.joinButton.focus();
+function confirmDeleteServer(server) {
+  confirmModal('Delete server', `${server.name}, every channel and the full message history will be deleted for everyone. This cannot be undone.`, 'Delete server', () => {
+    socket.request('delete-server', { serverId: server.id }).catch((error) => toast(error.message, true));
+  });
 }
 
-async function chooseMode(mode) {
-  if (state.joining || state.joined) {
-    return;
-  }
+function openUserSettings() {
+  openModal((card) => {
+    const nameInput = el('input', { type: 'text', maxlength: '40', value: state.me.name });
+    const error = el('p', { class: 'form-error' });
+    let selectedColor = state.me.color || 1;
 
-  state.mode = mode;
-  for (const button of elements.modeButtons) {
-    const selected = button.dataset.mode === mode;
-    button.classList.toggle('is-selected', selected);
-    button.setAttribute('aria-pressed', String(selected));
-  }
-
-  elements.permissionHint.textContent = mode === 'video'
-    ? 'Requesting camera and microphone access...'
-    : 'Requesting microphone access...';
-
-  try {
-    await ensureMedia(mode);
-    elements.permissionHint.textContent = 'Your media stays on this device until you enter.';
-  } catch (error) {
-    elements.permissionHint.textContent = mediaErrorMessage(error);
-  }
-
-  syncLocalMediaUi();
-}
-
-async function submitJoin(event) {
-  event.preventDefault();
-  if (state.joining) {
-    return;
-  }
-
-  const name = elements.nameInput.value.trim().slice(0, 40);
-  const roomId = normalizeRoomId(elements.roomInput.value);
-  elements.nameInput.value = name;
-  elements.roomInput.value = roomId;
-  elements.joinError.textContent = '';
-
-  if (!name) {
-    elements.joinError.textContent = 'Enter your name before joining.';
-    elements.nameInput.focus();
-    return;
-  }
-  if (roomId.length < 3) {
-    elements.joinError.textContent = 'Enter a room code with at least 3 characters.';
-    elements.roomInput.focus();
-    return;
-  }
-
-  state.displayName = name;
-  state.roomId = roomId;
-  state.joining = true;
-  elements.joinButton.disabled = true;
-  elements.joinButtonLabel.textContent = 'Preparing your media...';
-  syncPreview();
-
-  try {
-    await ensureMedia(state.mode);
-    const media = getLocalMediaState();
-    if (!media.audio || (state.mode === 'video' && !media.video)) {
-      throw new Error('The selected microphone or camera is not available.');
+    const swatches = el('div', { class: 'color-row' });
+    for (let index = 1; index <= 8; index += 1) {
+      const swatch = el('button', { class: `color-swatch avatar c${index}`, type: 'button', 'aria-label': `Color ${index}` });
+      swatch.classList.toggle('is-selected', index === selectedColor);
+      swatch.addEventListener('click', () => {
+        selectedColor = index;
+        for (const other of swatches.children) {
+          other.classList.remove('is-selected');
+        }
+        swatch.classList.add('is-selected');
+      });
+      swatches.append(swatch);
     }
 
+    card.append(
+      el('h2', { text: 'Your profile' }),
+      el('p', { class: 'modal-sub', text: state.me.guest ? 'Guest session — register to keep your name across devices.' : `Signed in as @${state.me.username}` }),
+      el('form', {
+        class: 'modal-form',
+        onsubmit: async (event) => {
+          event.preventDefault();
+          try {
+            await socket.request('profile', { displayName: nameInput.value, color: selectedColor });
+            closeModal();
+          } catch (requestError) {
+            error.textContent = requestError.message;
+          }
+        }
+      },
+        el('label', {}, 'Display name', nameInput),
+        el('label', {}, 'Avatar color', swatches),
+        error,
+        el('div', { class: 'modal-buttons' },
+          el('button', { class: 'ghost-button', type: 'button', text: 'Cancel', onclick: closeModal }),
+          el('button', { class: 'primary-button', type: 'submit', text: 'Save' })
+        )
+      ),
+      el('div', { class: 'danger-zone' },
+        el('button', {
+          class: 'ghost-button', type: 'button',
+          onclick: async () => {
+            await voice.leave().catch(() => {});
+            await fetch('/api/logout', { method: 'POST' });
+            location.reload();
+          }
+        }, icon('i-logout'), 'Log out')
+      )
+    );
+  });
+}
+
+function openFindUserModal() {
+  openModal((card) => {
+    const input = el('input', { type: 'text', maxlength: '24', placeholder: 'exact username' });
+    const error = el('p', { class: 'form-error' });
+    card.append(
+      el('h2', { text: 'Find someone' }),
+      el('p', { class: 'modal-sub', text: 'Start a direct message by exact username. You can also click any member in a server.' }),
+      el('form', {
+        class: 'modal-form',
+        onsubmit: async (event) => {
+          event.preventDefault();
+          try {
+            const found = await socket.request('find-user', { username: input.value.trim().replace(/^@/, '') });
+            const ack = await socket.request('dm-open', { userId: found.user.id });
+            state.users.set(ack.user.id, { ...state.users.get(ack.user.id), ...ack.user });
+            if (ack.user.online) {
+              state.online.add(ack.user.id);
+            }
+            state.dms.set(ack.dm.id, ack.dm);
+            closeModal();
+            openDm(ack.dm.id);
+          } catch (requestError) {
+            error.textContent = requestError.message;
+          }
+        }
+      },
+        el('label', {}, 'Username', input),
+        error,
+        el('div', { class: 'modal-buttons' },
+          el('button', { class: 'primary-button', type: 'submit', text: 'Open conversation' })
+        )
+      )
+    );
+  });
+}
+
+// ============================================================== state sync
+
+function bumpChannelActivity(channelKey, ts) {
+  if (channelKey.startsWith('srv:')) {
+    const [, serverId, channelId] = channelKey.split(':');
+    const channel = getChannel(serverId, channelId);
+    if (channel) {
+      channel.lastAt = Math.max(channel.lastAt || 0, ts);
+    }
+  } else if (channelKey.startsWith('dm:')) {
+    const dm = state.dms.get(channelKey.slice(3));
+    if (dm) {
+      dm.lastAt = Math.max(dm.lastAt || 0, ts);
+    }
+  }
+}
+
+function applyServerAdded(serverView, users) {
+  state.servers.set(serverView.id, serverView);
+  for (const [id, user] of Object.entries(users || {})) {
+    state.users.set(id, { ...state.users.get(id), ...user });
+    if (user.online) {
+      state.online.add(id);
+    }
+  }
+  renderAll();
+}
+
+function applyReady(snapshot) {
+  state.me = snapshot.you;
+  state.connId = snapshot.connId;
+  state.lastRead = snapshot.you.lastRead || {};
+  state.mentions = snapshot.mentions || {};
+  state.voiceLimit = snapshot.voiceLimit || 12;
+  state.guestTtlHours = snapshot.guestTtlHours || 24;
+
+  state.servers.clear();
+  for (const server of snapshot.servers || []) {
+    state.servers.set(server.id, server);
+  }
+  state.dms.clear();
+  for (const dm of snapshot.dms || []) {
+    state.dms.set(dm.id, dm);
+  }
+  state.users.clear();
+  for (const [id, user] of Object.entries(snapshot.users || {})) {
+    state.users.set(id, user);
+  }
+  state.online = new Set(snapshot.online || []);
+  state.voiceStates.clear();
+  for (const [channelKey, participants] of Object.entries(snapshot.voice || {})) {
+    state.voiceStates.set(channelKey, participants);
+  }
+  state.messages.clear();
+  msgEls.clear();
+
+  voice.iceServers = snapshot.iceServers || voice.iceServers;
+  voice.resync(snapshot.connId);
+
+  ui.connBanner.hidden = true;
+  ui.authView.hidden = true;
+  ui.appView.hidden = false;
+
+  // Keep the current view when it still exists; otherwise land at home.
+  const view = state.view;
+  const stillValid =
+    view.kind === 'home' ||
+    (view.kind === 'dm' && state.dms.has(view.dmId)) ||
+    ((view.kind === 'text' || view.kind === 'voice') && getChannel(view.serverId, view.channelId));
+  if (!stillValid) {
+    state.view = { kind: 'home' };
+  }
+
+  renderAll();
+  if (view.kind === 'text' || view.kind === 'dm') {
+    if (stillValid) {
+      openChat(activeChannelKey());
+    }
+  }
+
+  if (state.pendingInvite) {
+    const code = state.pendingInvite;
+    state.pendingInvite = null;
+    socket.request('join-invite', { code })
+      .then((ack) => {
+        applyServerAdded(ack.server, ack.users);
+        openServer(ack.server.id);
+        toast(`Welcome to ${ack.server.name}!`);
+      })
+      .catch((error) => toast(error.message, true));
+    history.replaceState({}, '', '/');
+  }
+  state.booted = true;
+}
+
+function wireSocketEvents() {
+  socket.on('ready', applyReady);
+
+  socket.on('socket-closed', () => {
+    if (state.booted) {
+      ui.connBanner.hidden = false;
+    }
+  });
+
+  socket.on('message', ({ channelKey, message, user }) => {
+    if (user) {
+      state.users.set(user.id, { ...state.users.get(user.id), ...user });
+    }
+    insertMessage(channelKey, message);
+    bumpChannelActivity(channelKey, message.createdAt);
+
+    const viewing = activeChannelKey() === channelKey && document.hasFocus() && nearBottom();
+    if (!viewing) {
+      const mentioned = Array.isArray(message.mentions) && message.mentions.includes(state.me.id);
+      const isDm = channelKey.startsWith('dm:');
+      if (mentioned || isDm) {
+        state.mentions[channelKey] = (state.mentions[channelKey] || 0) + 1;
+      }
+    }
+    const entries = state.typing.get(channelKey);
+    if (entries) {
+      entries.delete(message.authorId);
+      renderTyping();
+    }
+    renderSidebar();
+    renderRail();
+    updateTitle();
+  });
+
+  socket.on('message-updated', ({ channelKey, message }) => {
+    applyMessageUpdate(channelKey, message);
+  });
+
+  socket.on('typing', ({ channelKey, userId }) => {
+    let entries = state.typing.get(channelKey);
+    if (!entries) {
+      entries = new Map();
+      state.typing.set(channelKey, entries);
+    }
+    entries.set(userId, Date.now() + 4000);
+    if (activeChannelKey() === channelKey) {
+      renderTyping();
+    }
+  });
+
+  socket.on('read', ({ channelKey, ts }) => {
+    state.lastRead[channelKey] = Math.max(state.lastRead[channelKey] || 0, ts);
+    delete state.mentions[channelKey];
+    renderSidebar();
+    renderRail();
+    updateTitle();
+  });
+
+  socket.on('presence', ({ userId, online }) => {
+    if (online) {
+      state.online.add(userId);
+    } else {
+      state.online.delete(userId);
+    }
+    renderSidebar();
+    renderMembers();
+  });
+
+  socket.on('user-updated', ({ user }) => {
+    state.users.set(user.id, { ...state.users.get(user.id), ...user });
+    if (user.id === state.me.id) {
+      state.me = { ...state.me, ...user };
+      renderMeBar();
+    }
+    renderSidebar();
+    renderMembers();
+  });
+
+  socket.on('server-added', ({ server, users }) => {
+    applyServerAdded(server, users);
+  });
+
+  socket.on('server-updated', ({ server }) => {
+    state.servers.set(server.id, server);
+    renderAll();
+  });
+
+  socket.on('server-removed', ({ serverId, reason }) => {
+    const server = state.servers.get(serverId);
+    state.servers.delete(serverId);
+    if ((state.view.kind === 'text' || state.view.kind === 'voice') && state.view.serverId === serverId) {
+      state.view = { kind: 'home' };
+    }
+    if (voice.active && voice.channelKey && voice.channelKey.startsWith(`srv:${serverId}:`)) {
+      voice.leave({ notifyServer: false });
+    }
+    if (reason === 'kicked' && server) {
+      toast(`You were kicked from ${server.name}.`, true);
+    } else if (reason === 'banned' && server) {
+      toast(`You were banned from ${server.name}.`, true);
+    } else if (reason === 'expired') {
+      toast(`The temporary server "${(server && server.name) || 'server'}" has closed.`);
+    }
+    renderAll();
+  });
+
+  socket.on('member-joined', ({ serverId, member, user, online }) => {
+    const server = state.servers.get(serverId);
+    if (user) {
+      state.users.set(user.id, { ...state.users.get(user.id), ...user });
+      if (online) {
+        state.online.add(user.id);
+      }
+    }
+    if (server && !server.members.some((candidate) => candidate.userId === member.userId)) {
+      server.members.push(member);
+    }
+    renderSidebar();
+    renderMembers();
+  });
+
+  socket.on('member-left', ({ serverId, userId }) => {
+    const server = state.servers.get(serverId);
+    if (server) {
+      server.members = server.members.filter((member) => member.userId !== userId);
+    }
+    renderSidebar();
+    renderMembers();
+  });
+
+  socket.on('member-updated', ({ serverId, userId, role }) => {
+    const server = state.servers.get(serverId);
+    if (server) {
+      const member = server.members.find((candidate) => candidate.userId === userId);
+      if (member) {
+        member.role = role;
+      }
+      if (userId === state.me.id) {
+        server.myRole = role;
+        toast(role === 'admin' ? `You are now an admin in ${server.name}.` : `You are no longer an admin in ${server.name}.`);
+      }
+    }
+    renderAll();
+  });
+
+  socket.on('channel-added', ({ serverId, channel }) => {
+    const server = state.servers.get(serverId);
+    if (server && !server.channels.some((candidate) => candidate.id === channel.id)) {
+      server.channels.push(channel);
+    }
+    renderSidebar();
+  });
+
+  socket.on('channel-updated', ({ serverId, channel }) => {
+    const server = state.servers.get(serverId);
+    if (server) {
+      const index = server.channels.findIndex((candidate) => candidate.id === channel.id);
+      if (index >= 0) {
+        server.channels[index] = channel;
+      }
+    }
+    renderSidebar();
+    renderMainView();
+  });
+
+  socket.on('channel-removed', ({ serverId, channelId }) => {
+    const server = state.servers.get(serverId);
+    if (server) {
+      server.channels = server.channels.filter((channel) => channel.id !== channelId);
+    }
+    state.messages.delete(keyForText(serverId, channelId));
+    if ((state.view.kind === 'text' || state.view.kind === 'voice') &&
+        state.view.serverId === serverId && state.view.channelId === channelId) {
+      openServer(serverId);
+      return;
+    }
+    renderSidebar();
+  });
+
+  socket.on('dm-added', ({ dm, user }) => {
+    state.dms.set(dm.id, dm);
+    if (user) {
+      state.users.set(user.id, { ...state.users.get(user.id), ...user });
+      if (user.online) {
+        state.online.add(user.id);
+      }
+    }
+    renderSidebar();
+    renderRail();
+  });
+
+  socket.on('voice-state', ({ channelKey, participants }) => {
+    const before = state.voiceStates.get(channelKey) || [];
+    state.voiceStates.set(channelKey, participants);
+    if (!participants.length) {
+      state.voiceStates.delete(channelKey);
+    }
+
+    if (voice.active && voice.channelKey === channelKey) {
+      voice.syncPeers(participants);
+      if (participants.length > before.length) {
+        beep('join');
+      } else if (participants.length < before.length) {
+        beep('leave');
+      }
+    }
+    renderSidebar();
+    renderVoiceView();
+  });
+
+  socket.on('voice-kicked', () => {
+    voice.leave({ notifyServer: false });
+    toast('The voice channel was closed.');
+  });
+
+  socket.on('signal', (message) => {
+    voice.handleSignal(message);
+  });
+}
+
+// ============================================================== auth flow
+
+function showAuth() {
+  ui.authView.hidden = false;
+  ui.appView.hidden = true;
+  ui.authInviteNote.hidden = !state.pendingInvite;
+  try {
+    const saved = localStorage.getItem('roomly-name');
+    if (saved && !$('#guestName').value) {
+      $('#guestName').value = saved;
+    }
+  } catch {}
+}
+
+async function submitAuth(endpoint, payload, errorEl) {
+  errorEl.textContent = '';
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Something went wrong.');
+    }
     try {
-      localStorage.setItem('roomly-name', name);
-    } catch {
-      // Storage may be disabled; it is not required to join.
-    }
-    elements.joinButtonLabel.textContent = 'Entering the room...';
-    await connectToRoom();
+      localStorage.setItem('roomly-name', data.user.name);
+    } catch {}
+    socket.connect();
   } catch (error) {
-    state.intentionalClose = true;
-    if (!state.joined && state.socket && state.socket.readyState < WebSocket.CLOSING) {
-      state.socket.close();
-    }
-    state.joining = false;
-    elements.joinButton.disabled = false;
-    elements.joinButtonLabel.textContent = 'Enter the room';
-    const isMediaError = ['NotAllowedError', 'NotFoundError', 'NotReadableError', 'SecurityError'].includes(error.name);
-    elements.joinError.textContent = isMediaError ? mediaErrorMessage(error) : error.message;
+    errorEl.textContent = error.message;
   }
 }
 
-async function loadRtcConfiguration() {
-  try {
-    const response = await fetch('/config', { cache: 'no-store' });
-    if (response.ok) {
-      const configuration = await response.json();
-      if (Array.isArray(configuration.iceServers)) {
-        state.rtcConfiguration = configuration;
+function wireAuthForms() {
+  const tabs = document.querySelectorAll('.auth-tabs button');
+  for (const tab of tabs) {
+    tab.addEventListener('click', () => {
+      for (const other of tabs) {
+        other.classList.toggle('is-active', other === tab);
+      }
+      for (const panel of document.querySelectorAll('.auth-form')) {
+        panel.hidden = panel.dataset.panel !== tab.dataset.tab;
+      }
+    });
+  }
+
+  $('#loginForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    submitAuth('/api/login', {
+      username: $('#loginUsername').value.trim(),
+      password: $('#loginPassword').value
+    }, $('#loginError'));
+  });
+
+  $('#registerForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    submitAuth('/api/register', {
+      username: $('#regUsername').value.trim(),
+      displayName: $('#regDisplayName').value.trim(),
+      password: $('#regPassword').value
+    }, $('#regError'));
+  });
+
+  $('#guestForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    submitAuth('/api/guest', { displayName: $('#guestName').value.trim() }, $('#guestError'));
+  });
+}
+
+// ============================================================== wiring
+
+function wireUi() {
+  ui.homeButton.addEventListener('click', openHome);
+  ui.addServerButton.addEventListener('click', () => openAddServerModal());
+  ui.homeCreateServer.addEventListener('click', () => openAddServerModal('create'));
+  ui.homeJoinServer.addEventListener('click', () => openAddServerModal('join'));
+  ui.findUserButton.addEventListener('click', openFindUserModal);
+  ui.settingsButton.addEventListener('click', openUserSettings);
+  ui.serverMenuButton.addEventListener('click', (event) => openServerMenu(event.currentTarget));
+  ui.invitePeopleButton.addEventListener('click', () => {
+    const server = currentServerForView();
+    if (server) {
+      openInviteModal(server);
+    }
+  });
+  ui.toggleMembersButton.addEventListener('click', () => {
+    state.memberPanelOpen = !state.memberPanelOpen;
+    ui.toggleMembersButton.setAttribute('aria-pressed', String(state.memberPanelOpen));
+    renderMainView();
+  });
+  ui.addTextChannelButton.addEventListener('click', () => {
+    const server = currentServerForView();
+    if (server) {
+      openCreateChannelModal(server, 'text');
+    }
+  });
+  ui.addVoiceChannelButton.addEventListener('click', () => {
+    const server = currentServerForView();
+    if (server) {
+      openCreateChannelModal(server, 'voice');
+    }
+  });
+
+  // Composer
+  ui.sendButton.addEventListener('click', sendCurrentMessage);
+  ui.composerInput.addEventListener('input', () => {
+    autoSizeComposer();
+    updateMentionPopup();
+    const now = Date.now();
+    if (now - lastTypingSentAt > 2500 && ui.composerInput.value.trim() && !state.editingId) {
+      lastTypingSentAt = now;
+      const channelKey = activeChannelKey();
+      if (channelKey && (state.view.kind === 'text' || state.view.kind === 'dm')) {
+        socket.push('typing', { channelKey });
       }
     }
-  } catch {
-    state.rtcConfiguration = defaultRtcConfiguration;
-  }
-}
-
-function initialize() {
-  const roomFromUrl = normalizeRoomId(new URLSearchParams(location.search).get('room') || '');
-  elements.roomInput.value = roomFromUrl || generateRoomId();
-  try {
-    elements.nameInput.value = localStorage.getItem('roomly-name') || '';
-  } catch {
-    elements.nameInput.value = '';
-  }
-  syncPreview();
-  loadRtcConfiguration();
-
-  elements.joinForm.addEventListener('submit', submitJoin);
-  elements.newRoomButton.addEventListener('click', () => {
-    elements.roomInput.value = generateRoomId();
-    elements.roomInput.focus();
   });
-  elements.roomInput.addEventListener('input', () => {
-    elements.roomInput.value = normalizeRoomId(elements.roomInput.value);
+  ui.composerInput.addEventListener('keydown', (event) => {
+    if (mentionState.open) {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const delta = event.key === 'ArrowDown' ? 1 : -1;
+        mentionState.highlighted = (mentionState.highlighted + delta + mentionState.matches.length) % mentionState.matches.length;
+        updateMentionPopup();
+        return;
+      }
+      if (event.key === 'Enter' || event.key === 'Tab') {
+        event.preventDefault();
+        pickMention(mentionState.highlighted);
+        return;
+      }
+      if (event.key === 'Escape') {
+        closeMentionPopup();
+        return;
+      }
+    }
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      sendCurrentMessage();
+    } else if (event.key === 'Escape') {
+      if (state.editingId) {
+        stopEditing();
+      } else if (state.replyTo) {
+        cancelReply();
+      }
+    } else if (event.key === 'ArrowUp' && !ui.composerInput.value) {
+      const channelKey = activeChannelKey();
+      const bucket = channelKey ? state.messages.get(channelKey) : null;
+      if (bucket) {
+        const mine = [...bucket.list].reverse().find((message) => message.authorId === state.me.id && !message.deleted);
+        if (mine) {
+          event.preventDefault();
+          startEditing(mine);
+        }
+      }
+    }
   });
-  elements.nameInput.addEventListener('input', syncPreview);
+  ui.replyBarCancel.addEventListener('click', () => {
+    if (state.editingId) {
+      stopEditing();
+    } else {
+      cancelReply();
+    }
+  });
+  ui.emojiButton.addEventListener('click', (event) => {
+    openEmojiPopup(event.currentTarget, (emoji) => {
+      const input = ui.composerInput;
+      const caret = input.selectionStart || input.value.length;
+      input.value = input.value.slice(0, caret) + emoji + input.value.slice(caret);
+      input.focus();
+      input.setSelectionRange(caret + emoji.length, caret + emoji.length);
+      autoSizeComposer();
+    });
+  });
+  ui.attachButton.addEventListener('click', () => ui.fileInput.click());
+  ui.fileInput.addEventListener('change', () => {
+    uploadFiles(Array.from(ui.fileInput.files || []));
+    ui.fileInput.value = '';
+  });
+  ui.composerInput.addEventListener('paste', (event) => {
+    const files = Array.from(event.clipboardData.files || []);
+    if (files.length) {
+      event.preventDefault();
+      uploadFiles(files);
+    }
+  });
+  ui.chatView.addEventListener('dragover', (event) => event.preventDefault());
+  ui.chatView.addEventListener('drop', (event) => {
+    event.preventDefault();
+    const files = Array.from(event.dataTransfer.files || []);
+    if (files.length) {
+      uploadFiles(files);
+    }
+  });
 
-  for (const button of elements.modeButtons) {
-    button.addEventListener('click', () => chooseMode(button.dataset.mode));
-  }
+  ui.loadOlderButton.addEventListener('click', loadOlder);
+  ui.messageScroll.addEventListener('scroll', debounce(() => {
+    if (nearBottom() && document.hasFocus()) {
+      const channelKey = activeChannelKey();
+      if (channelKey && (state.view.kind === 'text' || state.view.kind === 'dm')) {
+        const bucket = state.messages.get(channelKey);
+        const last = bucket && bucket.list[bucket.list.length - 1];
+        if (last && isUnread(channelKey, last.createdAt)) {
+          markRead(channelKey);
+        }
+      }
+    }
+  }, 300));
 
-  elements.micButton.addEventListener('click', () => toggleTrack('audio'));
-  elements.cameraButton.addEventListener('click', () => toggleTrack('video'));
-  elements.inviteButton.addEventListener('click', copyInvite);
-  elements.leaveButton.addEventListener('click', resetMeeting);
+  // Voice controls
+  ui.voiceJoinButton.addEventListener('click', () => joinVoice(true));
+  ui.voiceJoinMicButton.addEventListener('click', () => joinVoice(false));
+  const toggleMic = () => voice.toggleMic().catch((error) => toast(error.message, true));
+  const toggleCam = () => voice.toggleCam().catch((error) => toast(error.message, true));
+  const toggleScreenShare = () => {
+    if (voice.screenStream) {
+      voice.stopScreen();
+      toast('Screen sharing stopped.');
+    } else {
+      voice.startScreen().catch((error) => {
+        if (error && error.name !== 'NotAllowedError') {
+          toast('Screen sharing failed to start.', true);
+        }
+      });
+    }
+  };
+  const stopShare = () => {
+    if (voice.screenStream) {
+      voice.stopScreen();
+      toast('Screen sharing stopped.');
+    }
+  };
+  ui.vMicButton.addEventListener('click', toggleMic);
+  ui.vCamButton.addEventListener('click', toggleCam);
+  ui.vScreenButton.addEventListener('click', toggleScreenShare);
+  ui.dockMicButton.addEventListener('click', toggleMic);
+  ui.dockCamButton.addEventListener('click', toggleCam);
+  ui.dockScreenButton.addEventListener('click', toggleScreenShare);
+  ui.screenSelfStop.addEventListener('click', stopShare);
+  ui.sharePill.addEventListener('click', stopShare);
+  ui.vLeaveButton.addEventListener('click', () => {
+    voice.leave();
+    beep('leave');
+  });
+  ui.voiceDockLeave.addEventListener('click', () => {
+    voice.leave();
+    beep('leave');
+  });
+  ui.screenStage.addEventListener('dblclick', () => {
+    // Fullscreen the whole stage (share + tiles + controls), never just the
+    // video — the mic/camera/stop controls must stay reachable.
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else if (ui.voiceStage.requestFullscreen) {
+      ui.voiceStage.requestFullscreen().catch(() => {});
+    }
+  });
 
+  // Overlays
+  ui.modalRoot.querySelector('.modal-backdrop').addEventListener('click', closeModal);
+  ui.lightbox.addEventListener('click', () => {
+    ui.lightbox.hidden = true;
+  });
   document.addEventListener('keydown', (event) => {
-    if (!state.joined || event.ctrlKey || event.metaKey || event.altKey) {
-      return;
+    if (event.key === 'Escape') {
+      if (!ui.lightbox.hidden) {
+        ui.lightbox.hidden = true;
+      } else if (!ui.modalRoot.hidden) {
+        closeModal();
+      } else {
+        closePopovers();
+      }
     }
-    const target = event.target;
-    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
-      return;
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (!ui.popover.hidden && !ui.popover.contains(event.target)) {
+      ui.popover.hidden = true;
     }
-
-    if (event.key.toLowerCase() === 'm') {
-      event.preventDefault();
-      toggleTrack('audio');
-    } else if (event.key.toLowerCase() === 'v') {
-      event.preventDefault();
-      toggleTrack('video');
+    if (!ui.emojiPopup.hidden && !ui.emojiPopup.contains(event.target) && event.target !== ui.emojiButton) {
+      ui.emojiPopup.hidden = true;
+    }
+    if (mentionState.open && !ui.mentionPopup.contains(event.target) && event.target !== ui.composerInput) {
+      closeMentionPopup();
     }
   });
 
-  document.addEventListener('pointerdown', () => {
-    if (state.joined) {
-      for (const video of elements.videoGrid.querySelectorAll('video')) {
-        video.play().catch(() => undefined);
-      }
+  window.addEventListener('focus', () => {
+    const channelKey = activeChannelKey();
+    if (channelKey && (state.view.kind === 'text' || state.view.kind === 'dm') && nearBottom()) {
+      markRead(channelKey);
     }
-  }, { passive: true });
+  });
 
   window.addEventListener('beforeunload', () => {
-    state.intentionalClose = true;
-    send({ type: 'leave' });
-    for (const track of state.localStream.getTracks()) {
-      track.stop();
-    }
+    socket.push('voice-leave');
   });
-
-  elements.permissionHint.textContent = 'Camera and microphone access is requested when you enter.';
 }
 
-initialize();
+// ============================================================== boot
+
+async function boot() {
+  const inviteMatch = location.pathname.match(/^\/invite\/([a-z0-9]+)/i);
+  if (inviteMatch) {
+    state.pendingInvite = inviteMatch[1].toLowerCase();
+  }
+
+  wireAuthForms();
+  wireUi();
+  wireSocketEvents();
+
+  try {
+    const response = await fetch('/api/me');
+    if (response.ok) {
+      socket.connect();
+      return;
+    }
+  } catch {}
+  showAuth();
+}
+
+boot();
+
+// Debug handle for tests and support diagnostics (read-only usage expected).
+window.roomlyDebug = { state, voice, socket };
