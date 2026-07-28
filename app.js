@@ -2174,7 +2174,6 @@ function openAddServerModal(initial = 'choose') {
             applyServerAdded(ack.server);
             openServer(ack.server.id);
             openInviteModal(ack.server);
-            fx.confetti();
           } catch (requestError) {
             error.textContent = requestError.message;
           }
@@ -2212,7 +2211,6 @@ function openAddServerModal(initial = 'choose') {
             applyServerAdded(ack.server, ack.users);
             openServer(ack.server.id);
             toast(`Welcome to ${ack.server.name}!`);
-            fx.confetti();
           } catch (requestError) {
             error.textContent = requestError.message;
           }
@@ -2631,7 +2629,6 @@ function applyReady(snapshot) {
         applyServerAdded(ack.server, ack.users);
         openServer(ack.server.id);
         toast(`Welcome to ${ack.server.name}!`);
-        fx.confetti();
       })
       .catch((error) => toast(error.message, true));
     history.replaceState({}, '', '/');
@@ -3207,8 +3204,6 @@ function initFx() {
     fx.aurora(ui.authView, { intensity: 1, blobs: 6 });
     fx.aurora(ui.homeView, { intensity: 0.55, blobs: 5 });
     fx.aurora(ui.voiceView, { intensity: 0.4, blobs: 4 });
-    fx.shapes(ui.authView, 8);
-    fx.shapes(ui.homeView, 6);
     fx.tilt(ui.homeServerCards, '.home-card-item');
     fx.speakingGlow({
       getAnalysers: () => voice.analysers,

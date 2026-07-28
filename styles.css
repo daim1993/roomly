@@ -2921,44 +2921,6 @@ svg {
 .voice-prejoin { position: relative; z-index: 2; }
 .voice-stage:not(.pin-max) { position: relative; z-index: 2; }
 
-/* Floating geometric shapes */
-.fx-shapes { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
-.fx-shape { position: absolute; animation: fx-float linear infinite; }
-@keyframes fx-float {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(18px, -26px) rotate(35deg); }
-  50% { transform: translate(-12px, -44px) rotate(-20deg); }
-  75% { transform: translate(-24px, -14px) rotate(15deg); }
-}
-.fx-ring {
-  border-radius: 50%;
-  background: conic-gradient(from 0deg, #7d39eb, #c6ff33, #4cc9ff, #7d39eb);
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
-  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
-}
-.fx-dot { border-radius: 50%; background: radial-gradient(circle at 35% 35%, #c6ff33, rgba(198,255,51,0)); }
-.fx-squircle {
-  border-radius: 32%;
-  background: linear-gradient(135deg, rgba(125,57,235,.8), rgba(76,201,255,.4));
-  transform: rotate(12deg);
-}
-.fx-cross { background: none; }
-.fx-cross::before, .fx-cross::after {
-  content: "";
-  position: absolute;
-  inset: 44% 0;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #ff7ac8, #9b5cff);
-}
-.fx-cross::after { transform: rotate(90deg); }
-
-/* Confetti + celebration overlays */
-.fx-confetti {
-  position: fixed;
-  inset: 0;
-  z-index: 400;
-  pointer-events: none;
-}
 .fx-emoji {
   position: fixed;
   z-index: 401;
@@ -3077,6 +3039,6 @@ svg {
 .voice-prejoin-icon { animation: float-slow 4.5s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .fx-shape, .rail-item.is-active::after { animation: none !important; }
+  .rail-item.is-active::after { animation: none !important; }
   #homeGreeting, .auth-copy h1 { animation: none; }
 }
