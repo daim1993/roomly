@@ -12,7 +12,7 @@ One Node.js process. One dependency (`ws`). No build step.
 
 **Voice & video rooms** — multi-party WebRTC mesh calls inside voice channels, camera on/off, mute, **screen sharing** with a focused stage layout, **click-to-pin** anyone full-screen (Meet-style), speaking rings, live occupancy in the sidebar, a call timer, voice that stays connected while you browse (dock control bar), join/leave chimes, and **lock-screen keep-alive** on mobile (Wake Lock + Media Session) so calls survive the screen turning off.
 
-**People** — accounts (username + password, scrypt-hashed) or guest mode, display names and avatar colors, presence (online/offline), member list grouped by status with role icons, direct messages (find by username or click any member).
+**People** — accounts (username + password, scrypt-hashed) or guest mode, presence (online/offline), member list grouped by status with role icons, direct messages (find by username or click any member). Full profiles: **image avatars** (PNG/JPG upload, click your avatar to change it), display names (your @username never changes), **pronouns**, a 190-character **About Me** with markdown and emoji, **custom statuses** with an emoji and a timer (1 hour / 24 hours / until cleared), and **profile privacy** (everyone / small servers ≤200 + DMs / DM contacts only — avatar, name and username always stay visible).
 
 **Moderation** — server owner + admins, promote/demote, kick, ban/unban, delete anyone's message (admins), channel management. Guests get one auto-expiring temporary server.
 

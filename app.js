@@ -373,16 +373,25 @@ function renderRail() {
   }
 }
 
+function paintAvatar(node, user) {
+  node.className = `avatar c${user.color || 1}`;
+  node.replaceChildren();
+  if (user.avatar) {
+    node.classList.add('has-img');
+    node.append(el('img', { src: user.avatar, alt: '' }));
+  } else {
+    node.textContent = initials(user.name);
+  }
+}
+
 function renderMeBar() {
   const me = state.me;
-  ui.meAvatar.className = `avatar c${me.color || 1}`;
-  ui.meAvatar.textContent = initials(me.name);
+  paintAvatar(ui.meAvatar, me);
   ui.meName.textContent = me.name;
   ui.meTag.textContent = me.guest ? 'Guest' : `@${me.username}`;
   const hpAvatar = document.getElementById('hpAvatar');
   if (hpAvatar) {
-    hpAvatar.className = `avatar c${me.color || 1}`;
-    hpAvatar.textContent = initials(me.name);
+    paintAvatar(hpAvatar, me);
     document.getElementById('hpName').textContent = me.name;
     document.getElementById('hpRole').textContent =
       me.guest ? 'Guest' : (me.platformAdmin ? 'Platform admin' : 'Online');
@@ -733,11 +742,18 @@ function renderMembers() {
         onclick: (event) => openUserPopover(event.currentTarget, user, server)
       },
         avatarWrap,
-        el('span', { class: 'member-name' },
-          user.name,
-          member.role === 'owner' ? icon('i-crown', 'role-owner-icon') : null,
-          member.role === 'admin' ? icon('i-shield', 'role-admin-icon') : null,
-          user.guest ? el('span', { class: 'guest-chip', text: 'guest' }) : null
+        el('span', { class: 'member-text' },
+          el('span', { class: 'member-name' },
+            user.name,
+            user.pronouns ? el('span', { class: 'member-pronouns', text: user.pronouns }) : null,
+            member.role === 'owner' ? icon('i-crown', 'role-owner-icon') : null,
+            member.role === 'admin' ? icon('i-shield', 'role-admin-icon') : null,
+            user.guest ? el('span', { class: 'guest-chip', text: 'guest' }) : null
+          ),
+          user.status ? el('small', {
+            class: 'member-status',
+            text: `${user.status.emoji ? `${user.status.emoji} ` : ''}${user.status.text}`.trim()
+          }) : null
         )
       );
       ui.memberList.append(item);
@@ -2010,13 +2026,41 @@ function openUserPopover(anchor, user, server) {
   ui.popover.replaceChildren();
   const fresh = state.users.get(user.id) || user;
 
-  ui.popover.append(el('div', { class: 'popover-head' },
-    avatarEl(fresh),
+  ui.popover.append(el('div', { class: 'popover-head profile-head' },
+    avatarEl(fresh, 'pop-avatar'),
     el('span', { class: 'pop-name' },
-      el('strong', { text: fresh.name }),
+      el('strong', {},
+        fresh.name,
+        fresh.pronouns ? el('span', { class: 'pop-pronouns', text: fresh.pronouns }) : null
+      ),
       el('small', { text: fresh.guest ? 'Guest account' : `@${fresh.username}` })
     )
   ));
+
+  if (fresh.status) {
+    ui.popover.append(el('div', {
+      class: 'pop-status',
+      text: `${fresh.status.emoji ? `${fresh.status.emoji} ` : ''}${fresh.status.text}`.trim()
+    }));
+  }
+
+  const bioSlot = el('div', { class: 'pop-bio', hidden: true });
+  ui.popover.append(bioSlot);
+  socket.request('profile-full', { userId: fresh.id }).then((ack) => {
+    if (ui.popover.hidden || !ui.popover.contains(bioSlot)) {
+      return;
+    }
+    if (ack.bio) {
+      bioSlot.hidden = false;
+      bioSlot.replaceChildren(
+        el('p', { class: 'pop-bio-label', text: 'About me' }),
+        renderContent(ack.bio, state.users)
+      );
+    } else if (ack.detailsHidden && fresh.id !== state.me.id) {
+      bioSlot.hidden = false;
+      bioSlot.replaceChildren(el('p', { class: 'pop-bio-label dim', text: 'Profile details are private.' }));
+    }
+  }).catch(() => {});
 
   if (fresh.id !== state.me.id) {
     ui.popover.append(el('button', {
@@ -2472,12 +2516,124 @@ function confirmDeleteServer(server) {
   });
 }
 
-function openUserSettings() {
-  openModal((card) => {
-    const nameInput = el('input', { type: 'text', maxlength: '40', value: state.me.name });
-    const error = el('p', { class: 'form-error' });
-    let selectedColor = state.me.color || 1;
+function applyMeUpdate(userView) {
+  state.me = { ...state.me, ...userView };
+  if (!('status' in userView)) {
+    state.me.status = null; // publicUser omits status when there is none
+  }
+  const merged = { ...state.users.get(userView.id), ...userView };
+  if (!('status' in userView)) {
+    merged.status = null;
+  }
+  state.users.set(userView.id, merged);
+  renderAll();
+}
 
+async function uploadAvatar(file, errorEl) {
+  if (!/^image\/(png|jpeg)$/.test(file.type)) {
+    const message = 'Avatars must be a static PNG or JPG image.';
+    if (errorEl) { errorEl.textContent = message; } else { toast(message, true); }
+    return null;
+  }
+  try {
+    const safeName = file.type === 'image/png' ? 'avatar.png' : 'avatar.jpg';
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      headers: {
+        'X-File-Name': btoa(unescape(encodeURIComponent(safeName))),
+        'Content-Type': 'application/octet-stream'
+      },
+      body: file
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Upload failed.');
+    }
+    const ack = await socket.request('profile', { avatar: data.attachment.url });
+    applyMeUpdate(ack.user);
+    toast('Avatar updated.');
+    return ack.user.avatar;
+  } catch (error) {
+    if (errorEl) { errorEl.textContent = error.message; } else { toast(error.message, true); }
+    return null;
+  }
+}
+
+function pickAvatarFile() {
+  const input = el('input', { type: 'file' });
+  input.accept = 'image/png,image/jpeg';
+  input.addEventListener('change', () => {
+    const file = input.files && input.files[0];
+    if (file) {
+      uploadAvatar(file);
+    }
+  });
+  input.click();
+}
+
+function statusLineText(status) {
+  return `${status.emoji ? `${status.emoji} ` : ''}${status.text}`.trim();
+}
+
+function openMeMenu(anchor) {
+  ui.popover.replaceChildren();
+  const me = state.me;
+  ui.popover.append(el('div', { class: 'popover-head profile-head' },
+    avatarEl(me, 'pop-avatar'),
+    el('span', { class: 'pop-name' },
+      el('strong', {}, me.name, me.pronouns ? el('span', { class: 'pop-pronouns', text: me.pronouns }) : null),
+      el('small', { text: me.guest ? 'Guest account' : `@${me.username}` })
+    )
+  ));
+  if (me.status) {
+    ui.popover.append(el('div', { class: 'pop-status', text: statusLineText(me.status) }));
+  }
+  ui.popover.append(el('button', {
+    class: 'popover-item', type: 'button',
+    onclick: () => { closePopovers(); openUserSettings('status'); }
+  }, icon('i-emoji'), me.status ? 'Change status' : 'Set a status'));
+  if (me.status) {
+    ui.popover.append(el('button', {
+      class: 'popover-item', type: 'button',
+      onclick: async () => {
+        closePopovers();
+        try {
+          const ack = await socket.request('status-set', { text: '', emoji: '' });
+          applyMeUpdate(ack.user);
+          toast('Status cleared.');
+        } catch (error) {
+          toast(error.message, true);
+        }
+      }
+    }, icon('i-x'), 'Clear status'));
+  }
+  ui.popover.append(el('button', {
+    class: 'popover-item', type: 'button',
+    onclick: () => { closePopovers(); pickAvatarFile(); }
+  }, icon('i-cam'), 'Change avatar'));
+  ui.popover.append(el('button', {
+    class: 'popover-item', type: 'button',
+    onclick: () => { closePopovers(); openUserSettings('profile'); }
+  }, icon('i-edit'), 'Edit profile'));
+  positionFloating(ui.popover, anchor);
+}
+
+function openUserSettings(initialTab) {
+  openModal((card) => {
+    const tabs = { profile: 'Profile', status: 'Status', privacy: 'Privacy' };
+    const error = el('p', { class: 'form-error' });
+    const cancelBtn = () => el('button', { class: 'ghost-button', type: 'button', text: 'Cancel', onclick: closeModal });
+    const saveBtn = (label) => el('button', { class: 'primary-button', type: 'submit', text: label });
+
+    // ------------------------------------------------------- profile tab
+    const nameInput = el('input', { type: 'text', maxlength: '40', value: state.me.name });
+    const pronounInput = el('input', { type: 'text', maxlength: '32', value: state.me.pronouns || '', placeholder: 'e.g. they/them' });
+    const bioInput = el('textarea', { maxlength: '190', rows: 3, placeholder: 'A short intro — markdown and emoji work here.' });
+    bioInput.value = state.me.bio || '';
+    const bioCount = el('small', { class: 'bio-counter', text: `${bioInput.value.length}/190` });
+    bioInput.addEventListener('input', () => { bioCount.textContent = `${bioInput.value.length}/190`; });
+
+    let selectedColor = state.me.color || 1;
     const swatches = el('div', { class: 'color-row' });
     for (let index = 1; index <= 8; index += 1) {
       const swatch = el('button', { class: `color-swatch avatar c${index}`, type: 'button', 'aria-label': `Color ${index}` });
@@ -2492,29 +2648,188 @@ function openUserSettings() {
       swatches.append(swatch);
     }
 
+    const avatarFileInput = el('input', { type: 'file', hidden: true });
+    avatarFileInput.accept = 'image/png,image/jpeg';
+    avatarFileInput.addEventListener('change', async () => {
+      const file = avatarFileInput.files && avatarFileInput.files[0];
+      if (file) {
+        const url = await uploadAvatar(file, error);
+        if (url) {
+          closeModal();
+          openUserSettings('profile');
+        }
+      }
+    });
+    const avatarRow = el('div', { class: 'avatar-edit-row' },
+      avatarEl(state.me, 'settings-avatar'),
+      el('div', { class: 'avatar-edit-buttons' },
+        el('button', { class: 'ghost-button small', type: 'button', onclick: () => avatarFileInput.click() }, icon('i-cam'), 'Change avatar'),
+        state.me.avatar ? el('button', {
+          class: 'ghost-button small danger', type: 'button',
+          onclick: async () => {
+            try {
+              const ack = await socket.request('profile', { avatar: null });
+              applyMeUpdate(ack.user);
+              closeModal();
+              openUserSettings('profile');
+            } catch (requestError) {
+              error.textContent = requestError.message;
+            }
+          }
+        }, icon('i-trash'), 'Remove') : null
+      )
+    );
+
+    const profilePanel = el('form', {
+      class: 'modal-form',
+      onsubmit: async (event) => {
+        event.preventDefault();
+        try {
+          const ack = await socket.request('profile', {
+            displayName: nameInput.value,
+            color: selectedColor,
+            pronouns: pronounInput.value,
+            bio: bioInput.value
+          });
+          state.me.bio = ack.bio;
+          applyMeUpdate(ack.user);
+          closeModal();
+          toast('Profile saved.');
+        } catch (requestError) {
+          error.textContent = requestError.message;
+        }
+      }
+    },
+      avatarRow,
+      avatarFileInput,
+      el('label', {}, 'Display name', nameInput),
+      state.me.guest ? null : el('p', { class: 'settings-hint', text: `Your @${state.me.username} handle never changes — it's how people find you and how you sign in.` }),
+      el('label', {}, 'Pronouns', pronounInput),
+      el('label', {}, el('span', { class: 'label-row' }, 'About me', bioCount), bioInput),
+      el('label', {}, 'Avatar color (when no image)', swatches),
+      el('div', { class: 'modal-buttons' }, cancelBtn(), saveBtn('Save profile'))
+    );
+
+    // -------------------------------------------------------- status tab
+    const statusEmoji = el('input', { type: 'text', maxlength: '4', class: 'status-emoji-input', value: (state.me.status && state.me.status.emoji) || '', placeholder: '🙂' });
+    const statusText = el('input', { type: 'text', maxlength: '64', value: (state.me.status && state.me.status.text) || '', placeholder: 'Studying, At work, BRB…' });
+    const quick = el('div', { class: 'status-quick-row' });
+    for (const emj of ['💬', '🎧', '📚', '💻', '☕', '🏃', '💤', '🎮']) {
+      quick.append(el('button', { class: 'status-quick', type: 'button', text: emj, onclick: () => { statusEmoji.value = emj; } }));
+    }
+    const ttlSelect = el('select', { class: 'ttl-select' },
+      el('option', { value: '0', text: 'Until I clear it' }),
+      el('option', { value: String(3_600_000), text: 'For 1 hour' }),
+      el('option', { value: String(86_400_000), text: 'For 24 hours' })
+    );
+
+    const statusPanel = el('form', {
+      class: 'modal-form',
+      onsubmit: async (event) => {
+        event.preventDefault();
+        try {
+          const ack = await socket.request('status-set', {
+            text: statusText.value,
+            emoji: statusEmoji.value,
+            ttlMs: Number(ttlSelect.value)
+          });
+          applyMeUpdate(ack.user);
+          closeModal();
+          toast(ack.user.status ? 'Status set.' : 'Status cleared.');
+        } catch (requestError) {
+          error.textContent = requestError.message;
+        }
+      }
+    },
+      el('label', {}, 'Emoji', el('div', { class: 'status-emoji-line' }, statusEmoji, quick)),
+      el('label', {}, 'Status message', statusText),
+      el('label', {}, 'Clear after', ttlSelect),
+      el('div', { class: 'modal-buttons' },
+        state.me.status ? el('button', {
+          class: 'ghost-button danger', type: 'button', text: 'Clear status',
+          onclick: async () => {
+            try {
+              const ack = await socket.request('status-set', { text: '', emoji: '' });
+              applyMeUpdate(ack.user);
+              closeModal();
+              toast('Status cleared.');
+            } catch (requestError) {
+              error.textContent = requestError.message;
+            }
+          }
+        }) : cancelBtn(),
+        saveBtn('Save status'))
+    );
+
+    // ------------------------------------------------------- privacy tab
+    const PRIVACY_OPTIONS = [
+      ['everyone', 'Everyone', 'Anyone you share a server or DM with can read your About me.'],
+      ['small', 'Small servers & DMs', 'Only servers with 200 or fewer members, plus people you message.'],
+      ['dms', 'Only people I message', 'Just your direct-message contacts can see the details.']
+    ];
+    let privacy = state.me.profilePrivacy || 'everyone';
+    const privacyList = el('div', { class: 'privacy-list' });
+    const rebuildPrivacy = () => {
+      privacyList.replaceChildren();
+      for (const [value, title, description] of PRIVACY_OPTIONS) {
+        privacyList.append(el('button', {
+          class: `privacy-option${privacy === value ? ' is-selected' : ''}`,
+          type: 'button',
+          onclick: () => { privacy = value; rebuildPrivacy(); }
+        },
+          el('strong', { text: title }),
+          el('small', { text: description })
+        ));
+      }
+    };
+    rebuildPrivacy();
+
+    const privacyPanel = el('form', {
+      class: 'modal-form',
+      onsubmit: async (event) => {
+        event.preventDefault();
+        try {
+          await socket.request('profile', { privacy });
+          state.me.profilePrivacy = privacy;
+          closeModal();
+          toast('Privacy updated.');
+        } catch (requestError) {
+          error.textContent = requestError.message;
+        }
+      }
+    },
+      privacyList,
+      el('p', { class: 'settings-hint', text: 'Your avatar, display name and username are always visible to everyone.' }),
+      el('div', { class: 'modal-buttons' }, cancelBtn(), saveBtn('Save privacy'))
+    );
+
+    // ------------------------------------------------------ tab plumbing
+    const panels = { profile: profilePanel, status: statusPanel, privacy: privacyPanel };
+    const tabBar = el('div', { class: 'auth-tabs modal-tabs' });
+    const tabButtons = {};
+    const show = (key) => {
+      for (const [k, btn] of Object.entries(tabButtons)) {
+        btn.classList.toggle('is-active', k === key);
+      }
+      for (const [k, panel] of Object.entries(panels)) {
+        panel.hidden = k !== key;
+      }
+      error.textContent = '';
+    };
+    for (const [key, label] of Object.entries(tabs)) {
+      const btn = el('button', { type: 'button', text: label, onclick: () => show(key) });
+      tabButtons[key] = btn;
+      tabBar.append(btn);
+    }
+
     card.append(
       el('h2', { text: 'Your profile' }),
-      el('p', { class: 'modal-sub', text: state.me.guest ? 'Guest session — register to keep your name across devices.' : `Signed in as @${state.me.username}` }),
-      el('form', {
-        class: 'modal-form',
-        onsubmit: async (event) => {
-          event.preventDefault();
-          try {
-            await socket.request('profile', { displayName: nameInput.value, color: selectedColor });
-            closeModal();
-          } catch (requestError) {
-            error.textContent = requestError.message;
-          }
-        }
-      },
-        el('label', {}, 'Display name', nameInput),
-        el('label', {}, 'Avatar color', swatches),
-        error,
-        el('div', { class: 'modal-buttons' },
-          el('button', { class: 'ghost-button', type: 'button', text: 'Cancel', onclick: closeModal }),
-          el('button', { class: 'primary-button', type: 'submit', text: 'Save' })
-        )
-      ),
+      el('p', { class: 'modal-sub', text: state.me.guest ? 'Guest session — register to keep your identity across devices.' : `Signed in as @${state.me.username}` }),
+      tabBar,
+      profilePanel,
+      statusPanel,
+      privacyPanel,
+      error,
       el('div', { class: 'danger-zone' },
         state.me.platformAdmin ? el('button', {
           class: 'ghost-button', type: 'button',
@@ -2530,6 +2845,7 @@ function openUserSettings() {
         }, icon('i-logout'), 'Log out')
       )
     );
+    show(tabs[initialTab] ? initialTab : 'profile');
   });
 }
 
@@ -2734,9 +3050,16 @@ function wireSocketEvents() {
   });
 
   socket.on('user-updated', ({ user }) => {
-    state.users.set(user.id, { ...state.users.get(user.id), ...user });
+    const merged = { ...state.users.get(user.id), ...user };
+    if (!('status' in user)) {
+      merged.status = null; // an omitted status means "no active status"
+    }
+    state.users.set(user.id, merged);
     if (user.id === state.me.id) {
       state.me = { ...state.me, ...user };
+      if (!('status' in user)) {
+        state.me.status = null;
+      }
       renderMeBar();
     }
     renderSidebar();
@@ -3002,7 +3325,18 @@ function wireUi() {
   ui.homeCreateServer.addEventListener('click', () => openAddServerModal('create'));
   ui.homeJoinServer.addEventListener('click', () => openAddServerModal('join'));
   ui.findUserButton.addEventListener('click', openFindUserModal);
-  ui.settingsButton.addEventListener('click', openUserSettings);
+  ui.settingsButton.addEventListener('click', () => openUserSettings('profile'));
+  ui.meAvatar.style.cursor = 'pointer';
+  ui.meAvatar.setAttribute('role', 'button');
+  ui.meAvatar.setAttribute('tabindex', '0');
+  ui.meAvatar.setAttribute('aria-label', 'Profile menu');
+  ui.meAvatar.addEventListener('click', () => openMeMenu(ui.meAvatar));
+  ui.meAvatar.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openMeMenu(ui.meAvatar);
+    }
+  });
   ui.serverMenuButton.addEventListener('click', (event) => openServerMenu(event.currentTarget));
   ui.invitePeopleButton.addEventListener('click', () => {
     const server = currentServerForView();

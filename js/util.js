@@ -53,10 +53,16 @@ export function initials(name) {
 }
 
 export function avatarEl(user, extraClass = '') {
-  return el('span', {
-    class: `avatar c${(user && user.color) || 1}${extraClass ? ` ${extraClass}` : ''}`,
-    text: initials(user && user.name)
+  const node = el('span', {
+    class: `avatar c${(user && user.color) || 1}${extraClass ? ` ${extraClass}` : ''}`
   });
+  if (user && user.avatar) {
+    node.classList.add('has-img');
+    node.append(el('img', { src: user.avatar, alt: '', loading: 'lazy' }));
+  } else {
+    node.textContent = initials(user && user.name);
+  }
+  return node;
 }
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
