@@ -34,15 +34,67 @@ const config = {
       { urls: ['stun:stun.cloudflare.com:3478'] }
     ];
     if (process.env.TURN_URL) {
+      // Your own relay always wins.
       iceServers.push({
         urls: process.env.TURN_URL.split(',').map((url) => url.trim()),
         username: process.env.TURN_USERNAME || '',
         credential: process.env.TURN_CREDENTIAL || ''
       });
+    } else if (fetchedTurnServers) {
+      // Credentials fetched from a TURN REST API (e.g. a free Metered
+      // account) — geographically routed and guaranteed capacity.
+      iceServers.push(...fetchedTurnServers);
+    } else if (process.env.TURN_DISABLE !== '1') {
+      // Zero-config fallback: the Open Relay community TURN uses the TURN
+      // REST credential scheme, so we mint short-lived credentials from the
+      // published shared secret right here. Relay is what lets calls
+      // connect through VPNs, symmetric NATs and strict firewalls — the
+      // TLS/TCP 443 variant passes almost anything. Best-effort community
+      // capacity: for production, set TURN_REST_API or TURN_URL.
+      const username = String(Math.floor(Date.now() / 1000) + 24 * 3600);
+      const credential = crypto.createHmac('sha1', 'openrelayprojectsecret')
+        .update(username).digest('base64');
+      iceServers.push({
+        urls: [
+          'turn:staticauth.openrelay.metered.ca:80',
+          'turn:staticauth.openrelay.metered.ca:443',
+          'turn:staticauth.openrelay.metered.ca:443?transport=tcp',
+          'turns:staticauth.openrelay.metered.ca:443?transport=tcp'
+        ],
+        username,
+        credential
+      });
     }
     return iceServers;
   }
 };
+
+// Optional: fetch ready-made TURN credentials from a REST endpoint (set
+// TURN_REST_API to e.g. https://<app>.metered.live/api/v1/turn/credentials?apiKey=KEY
+// from a free Metered account). Refreshed every 4 hours, cached in memory.
+let fetchedTurnServers = null;
+async function refreshTurnServers() {
+  if (!process.env.TURN_REST_API) {
+    return;
+  }
+  try {
+    const response = await fetch(process.env.TURN_REST_API);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const list = await response.json();
+    if (Array.isArray(list) && list.length) {
+      fetchedTurnServers = list.filter((entry) => entry && entry.urls);
+      console.log(`TURN credentials refreshed from API (${fetchedTurnServers.length} entries)`);
+    }
+  } catch (error) {
+    console.error('Could not refresh TURN credentials from TURN_REST_API:', error.message);
+  }
+}
+if (process.env.TURN_REST_API) {
+  refreshTurnServers();
+  setInterval(refreshTurnServers, 4 * 3600 * 1000).unref();
+}
 
 const store = new Store(config.dataDir);
 store.init();

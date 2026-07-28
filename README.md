@@ -41,7 +41,9 @@ For quick testing, open the invite link in a second browser or an incognito wind
 | `DATA_DIR` | `./data` | Durable storage (users, servers, messages, uploads) |
 | `MAX_VOICE_PEERS` | `12` | People per voice channel (mesh topology — see SCALING.md) |
 | `MAX_UPLOAD_MB` | `10` | Attachment size cap |
-| `TURN_URL`, `TURN_USERNAME`, `TURN_CREDENTIAL` | — | TURN relay for restrictive networks (comma-separate multiple URLs) |
+| `TURN_URL`, `TURN_USERNAME`, `TURN_CREDENTIAL` | — | Your own TURN relay (comma-separate multiple URLs) — highest priority |
+| `TURN_REST_API` | — | TURN REST credentials endpoint (e.g. a free [Metered](https://www.metered.ca/tools/openrelay/) account: `https://<app>.metered.live/api/v1/turn/credentials?apiKey=KEY`) — refreshed every 4h |
+| `TURN_DISABLE` | off (`1` to disable) | Turn off the built-in Open Relay community TURN fallback |
 | `ADMIN_USERS` | — | Comma-separated usernames granted platform-admin on boot |
 | `GUEST_SERVER_TTL_HOURS` | `24` | Lifetime of guest-created temporary servers |
 | `ROOMLY_DB` | (auto) | Set to `files` to force the JSON store instead of SQLite |
@@ -50,7 +52,7 @@ For quick testing, open the invite link in a second browser or an incognito wind
 ## Production notes
 
 - **Use HTTPS.** Browsers only allow camera/microphone/screen capture on HTTPS or `localhost`. Put Roomly behind Caddy, nginx or Traefik and proxy WebSockets on `/ws` (set `TRUST_PROXY=1`).
-- **Add TURN** (e.g. coturn) for reliable calls across strict NATs and corporate networks.
+- **TURN is built in.** With no configuration, the server mints short-lived credentials for the Open Relay community TURN, so calls connect even through VPNs, symmetric NATs and corporate firewalls (media relays over TCP/TLS 443 when direct P2P fails). Community capacity is best-effort — for guaranteed relay, create a free [Metered](https://www.metered.ca/tools/openrelay/) account and set `TURN_REST_API`, or run your own coturn and set `TURN_URL`.
 - **Back up `data/`.** It contains everything: `state.json`, per-channel message logs, uploads.
 - Voice channels use direct peer-to-peer mesh — great quality up to ~8–12 people. For bigger stages, front an SFU (see below).
 

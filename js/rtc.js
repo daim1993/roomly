@@ -547,11 +547,39 @@ export class VoiceManager {
 
     pc.addEventListener('connectionstatechange', () => {
       peer.connected = pc.connectionState === 'connected';
-      if (pc.connectionState === 'failed' && typeof pc.restartIce === 'function') {
-        pc.restartIce();
+      if (pc.connectionState === 'connected') {
+        peer.iceRestarts = 0; // healthy again — reset the watchdog budget
+      }
+      if (pc.connectionState === 'failed') {
+        this.kickIce(peer, 'failed');
+      }
+      if (pc.connectionState === 'disconnected') {
+        // Transient blips (VPN reroutes, wifi handoff): give it a moment,
+        // then force a fresh candidate hunt instead of hanging forever.
+        setTimeout(() => {
+          if (this.peers.get(peer.connId) === peer &&
+              pc.connectionState === 'disconnected') {
+            this.kickIce(peer, 'disconnected');
+          }
+        }, 3000);
       }
       this.onUpdate();
     });
+
+    // Watchdog: a link that hasn't connected after 12s is almost always a
+    // NAT/VPN path that needs new candidates (including TURN relay ones).
+    // Restart ICE up to three times before letting the UI keep saying
+    // "Connecting" — most stuck environments recover on the first kick.
+    peer.iceRestarts = 0;
+    peer.watchdog = setInterval(() => {
+      if (pc.signalingState === 'closed') {
+        clearInterval(peer.watchdog);
+        return;
+      }
+      if (pc.connectionState !== 'connected') {
+        this.kickIce(peer, 'watchdog');
+      }
+    }, 12000);
 
     this.sendMeta(peer);
     return peer;
@@ -591,7 +619,22 @@ export class VoiceManager {
     }
   }
 
+  /** Force a fresh round of candidate gathering on a stuck link. Bounded so
+      a genuinely unreachable peer doesn't renegotiate forever. */
+  kickIce(peer, reason) {
+    if (!peer || peer.iceRestarts >= 3 || peer.pc.signalingState === 'closed') {
+      return;
+    }
+    peer.iceRestarts += 1;
+    try {
+      if (typeof peer.pc.restartIce === 'function') {
+        peer.pc.restartIce();
+      }
+    } catch {}
+  }
+
   destroyPeer(peer, removeFromMap) {
+    clearInterval(peer.watchdog);
     try {
       peer.pc.close();
     } catch {}
