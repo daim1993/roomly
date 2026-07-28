@@ -27,8 +27,11 @@ const config = {
   maxUploadBytes: Number.parseInt(process.env.MAX_UPLOAD_MB || '10', 10) * 1024 * 1024,
   trustProxy: process.env.TRUST_PROXY === '1',
   iceServers() {
+    // Two independent anycast STUN providers: whichever answers first from the
+    // user's region wins, and one being unreachable never blocks a call.
     const iceServers = [
-      { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }
+      { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+      { urls: ['stun:stun.cloudflare.com:3478'] }
     ];
     if (process.env.TURN_URL) {
       iceServers.push({

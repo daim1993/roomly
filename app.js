@@ -182,6 +182,8 @@ const voice = new VoiceManager({
     syncVoiceAudio();
   }
 });
+// Diagnostics hook: lets tests (and curious users) inspect the live mesh.
+window.roomlyVoice = voice;
 
 const msgEls = new Map(); // messageId -> <li>
 const voiceTileEls = new Map(); // connId|'self' -> tile

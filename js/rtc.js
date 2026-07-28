@@ -18,7 +18,10 @@ export class VoiceManager {
     this.active = false;
     this.channelKey = null;
     this.selfConnId = null;
-    this.iceServers = [{ urls: ['stun:stun.l.google.com:19302'] }];
+    this.iceServers = [
+      { urls: ['stun:stun.l.google.com:19302'] },
+      { urls: ['stun:stun.cloudflare.com:3478'] }
+    ];
 
     this.localStream = new MediaStream();
     this.screenStream = null;
@@ -43,10 +46,18 @@ export class VoiceManager {
       return;
     }
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: { ideal: 1 } // mono voice: half the payload, same clarity
+      },
       video: false
     });
     const track = stream.getAudioTracks()[0];
+    try {
+      track.contentHint = 'speech';
+    } catch {}
     track.addEventListener('ended', () => {
       this.localStream.removeTrack(track);
       this.micEnabled = false;
@@ -64,9 +75,17 @@ export class VoiceManager {
     }
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
-      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
+      video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 24, max: 30 },
+        facingMode: 'user'
+      }
     });
     const track = stream.getVideoTracks()[0];
+    try {
+      track.contentHint = 'motion'; // favor smoothness for faces
+    } catch {}
     track.addEventListener('ended', () => {
       this.localStream.removeTrack(track);
       this.camEnabled = false;
@@ -95,9 +114,13 @@ export class VoiceManager {
       } else {
         const added = peer.pc.addTrack(track, this.localStream);
         added._kind = track.kind;
+        if (track.kind === 'video') {
+          this.preferCodecs(peer); // new transceiver: order codecs pre-offer
+        }
       }
     }
     await Promise.allSettled(jobs);
+    this.applyMeshProfile();
     this.sendMetaToAll();
   }
 
@@ -152,12 +175,17 @@ export class VoiceManager {
     });
     this.screenStream = stream;
     const track = stream.getVideoTracks()[0];
+    try {
+      track.contentHint = 'detail'; // favor sharp text over framerate
+    } catch {}
     track.addEventListener('ended', () => this.stopScreen(), { once: true });
 
     for (const peer of this.peers.values()) {
       const sender = peer.pc.addTrack(track, stream);
       peer.screenSenders.add(sender);
+      this.preferCodecs(peer);
     }
+    this.applyMeshProfile();
     this.pushMediaState();
     this.sendMetaToAll();
     this.onUpdate();
@@ -286,6 +314,7 @@ export class VoiceManager {
         this.createPeer(participant);
       }
     }
+    this.applyMeshProfile(); // room size changed: rebalance every link
     this.onUpdate();
   }
 
@@ -310,8 +339,137 @@ export class VoiceManager {
     }
   }
 
+  // ------------------------------------------------- worldwide efficiency
+  //
+  // The mesh sends every stream once per peer, so the room size decides the
+  // budget: small rooms get high quality + VP9's better compression, large
+  // rooms trade resolution/fps for stable, low-latency links anywhere.
+
+  meshProfile() {
+    const peers = Math.max(1, this.peers.size);
+    if (peers <= 1) {
+      return { cam: { maxBitrate: 1_500_000, maxFramerate: 30, scale: 1 }, screen: { maxBitrate: 2_500_000, maxFramerate: 30 }, vp9: true };
+    }
+    if (peers <= 3) {
+      return { cam: { maxBitrate: 800_000, maxFramerate: 24, scale: 1.5 }, screen: { maxBitrate: 2_000_000, maxFramerate: 20 }, vp9: true };
+    }
+    if (peers <= 6) {
+      return { cam: { maxBitrate: 450_000, maxFramerate: 20, scale: 2 }, screen: { maxBitrate: 1_400_000, maxFramerate: 15 }, vp9: false };
+    }
+    return { cam: { maxBitrate: 260_000, maxFramerate: 15, scale: 3 }, screen: { maxBitrate: 1_000_000, maxFramerate: 12 }, vp9: false };
+  }
+
+  applyMeshProfile() {
+    const profile = this.meshProfile();
+    for (const peer of this.peers.values()) {
+      for (const sender of peer.pc.getSenders()) {
+        this.tuneSender(peer, sender, profile);
+      }
+    }
+  }
+
+  tuneSender(peer, sender, profile) {
+    try {
+      const kind = sender.track ? sender.track.kind : sender._kind;
+      if (!kind) {
+        return;
+      }
+      const params = sender.getParameters();
+      if (!params.encodings || !params.encodings.length) {
+        params.encodings = [{}];
+      }
+      const encoding = params.encodings[0];
+      if (kind === 'audio') {
+        // Voice always wins: tiny, high-priority, loss-tolerant.
+        encoding.maxBitrate = 40_000;
+        encoding.priority = 'high';
+        encoding.networkPriority = 'high';
+      } else if (peer.screenSenders.has(sender)) {
+        encoding.maxBitrate = profile.screen.maxBitrate;
+        encoding.maxFramerate = profile.screen.maxFramerate;
+        delete encoding.scaleResolutionDownBy;
+        params.degradationPreference = 'maintain-resolution'; // text stays sharp
+      } else {
+        encoding.maxBitrate = profile.cam.maxBitrate;
+        encoding.maxFramerate = profile.cam.maxFramerate;
+        encoding.scaleResolutionDownBy = Math.max(1, profile.cam.scale);
+        params.degradationPreference = 'maintain-framerate'; // faces stay fluid
+      }
+      const result = sender.setParameters(params);
+      if (result && result.catch) {
+        result.catch(() => {});
+      }
+    } catch {}
+  }
+
+  /** Prefer VP9 in small rooms (better compression per bit), VP8 in large
+      ones (cheaper to encode N times). Must run before negotiation. */
+  preferCodecs(peer) {
+    try {
+      if (!window.RTCRtpReceiver || !RTCRtpReceiver.getCapabilities) {
+        return;
+      }
+      const caps = RTCRtpReceiver.getCapabilities('video');
+      if (!caps || !caps.codecs || !caps.codecs.length) {
+        return;
+      }
+      const profile = this.meshProfile();
+      const byMime = (mime) => caps.codecs.filter(
+        (codec) => codec.mimeType.toLowerCase() === mime);
+      const preferred = profile.vp9
+        ? [...byMime('video/vp9'), ...byMime('video/vp8'), ...byMime('video/h264')]
+        : [...byMime('video/vp8'), ...byMime('video/h264'), ...byMime('video/vp9')];
+      const rest = caps.codecs.filter((codec) => !preferred.includes(codec));
+      const ordered = [...preferred, ...rest];
+      for (const transceiver of peer.pc.getTransceivers()) {
+        const senderKind = transceiver.sender && transceiver.sender.track && transceiver.sender.track.kind;
+        const receiverKind = transceiver.receiver && transceiver.receiver.track && transceiver.receiver.track.kind;
+        if ((senderKind === 'video' || receiverKind === 'video') && transceiver.setCodecPreferences) {
+          transceiver.setCodecPreferences(ordered);
+        }
+      }
+    } catch {}
+  }
+
+  /** Opus tuning for long-haul links: DTX stops packets during silence,
+      in-band FEC survives loss, and a 40kbps cap keeps voice snappy. */
+  tuneSdp(description) {
+    try {
+      if (!description || !description.sdp) {
+        return description;
+      }
+      const sdp = description.sdp.replace(
+        /a=rtpmap:(\d+) opus\/48000\/2\r?\n([\s\S]*?)a=fmtp:\1 ([^\r\n]*)/,
+        (match, pt, between, params) => {
+          const parts = new Map();
+          for (const piece of params.split(';')) {
+            const [key, value] = piece.split('=');
+            parts.set(key.trim(), value);
+          }
+          parts.set('usedtx', '1');
+          parts.set('useinbandfec', '1');
+          parts.set('maxaveragebitrate', '40000');
+          parts.set('stereo', '0');
+          const rebuilt = Array.from(parts.entries())
+            .map(([key, value]) => (value === undefined ? key : `${key}=${value}`))
+            .join(';');
+          return `a=rtpmap:${pt} opus/48000/2\r\n${between}a=fmtp:${pt} ${rebuilt}`;
+        });
+      return { type: description.type, sdp };
+    } catch {
+      return description;
+    }
+  }
+
   createPeer(participant) {
-    const pc = new RTCPeerConnection({ iceServers: this.iceServers });
+    const pc = new RTCPeerConnection({
+      iceServers: this.iceServers,
+      // Fast setup: one bundled transport, muxed RTCP, and candidates
+      // pre-gathered before the offer even exists.
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require',
+      iceCandidatePoolSize: 8
+    });
     // Exactly one side starts the first offer: the newer connection (ids are
     // time-sortable). Symmetric auto-offers guarantee glare, and Chromium's
     // offer rollback can leave ICE without candidates — so we avoid it.
@@ -345,6 +503,10 @@ export class VoiceManager {
         peer.screenSenders.add(sender);
       }
     }
+    this.preferCodecs(peer);
+    for (const sender of pc.getSenders()) {
+      this.tuneSender(peer, sender, this.meshProfile());
+    }
 
     pc.addEventListener('icecandidate', ({ candidate }) => {
       if (candidate) {
@@ -359,7 +521,10 @@ export class VoiceManager {
       try {
         peer.makingOffer = true;
         await pc.setLocalDescription();
-        this.socket.push('signal', { target: peer.connId, payload: { description: pc.localDescription } });
+        this.socket.push('signal', {
+          target: peer.connId,
+          payload: { description: this.tuneSdp(pc.localDescription) }
+        });
       } catch (error) {
         if (pc.signalingState !== 'closed') {
           console.error('Negotiation failed:', error);
@@ -499,7 +664,10 @@ export class VoiceManager {
 
         if (description.type === 'offer') {
           await pc.setLocalDescription();
-          this.socket.push('signal', { target: peer.connId, payload: { description: pc.localDescription } });
+          this.socket.push('signal', {
+            target: peer.connId,
+            payload: { description: this.tuneSdp(pc.localDescription) }
+          });
         }
       } else if (payload.candidate) {
         if (peer.ignoreOffer) {
