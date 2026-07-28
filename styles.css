@@ -3370,216 +3370,142 @@ body { background: #080706; }
   .splash-card { animation: none; }
 }
 
-/* ============================================== CUT-CORNER STRUCTURE LAYER
-   Boxes get chamfered (cut) corners like a technical spec sheet: clip-path
-   octagons instead of round corners, a fine blueprint grid on the black desk,
-   ◇ labels with dotted leaders, index numbers on cards and corner crop marks.
-   Outer shadows die under clip-path, so hover/active/focus states move to
-   transforms and inset rings. */
+/* ============================================== SOFT ROUNDED SHELL LAYER
+   Crextio-style layout on the dark palette: one floating rounded panel on a
+   soft desk, pill nav elements, airy rounded cards with soft shadows, a
+   stats row on home — and every corner rounded. */
 
-/* --- the chamfer: one shared polygon, per-element cut size via --c --- */
-.home-card-item,
-.sidebar .channel-item,
+/* Soft desk instead of the blueprint grid */
+body {
+  background:
+    radial-gradient(900px 500px at 85% -10%, rgba(46, 107, 232, 0.1), transparent 60%),
+    radial-gradient(800px 520px at -10% 110%, rgba(214, 209, 200, 0.06), transparent 60%),
+    #0b0a09;
+}
+.auth-view {
+  background:
+    radial-gradient(1000px 560px at 85% -10%, rgba(46, 107, 232, 0.14), transparent 60%),
+    radial-gradient(800px 540px at -10% 110%, rgba(214, 209, 200, 0.07), transparent 62%),
+    #0b0a09;
+}
+.splash-view { background: #0b0a09; }
+
+/* Soft mixed-case type again */
+#homeGreeting, .auth-copy h1 {
+  text-transform: none;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.06;
+}
+.hc-name,
+.main-header-text strong,
 .primary-button,
 .ghost-button,
 .rec-send,
-.sidebar-action,
-.auth-tabs,
 .auth-tabs button,
-.auth-card,
-.auth-form input,
-.modal-form input[type="text"],
-.modal-form input[type="password"],
-.composer,
-.modal-card,
-.user-bar,
-.voice-dock,
-.dock-control,
-.server-rail,
-.rail-item,
-.main-header-text strong,
-.main-header-actions .icon-button,
-.header-profile,
-.voice-prejoin-card,
-.v-control,
-.pill-chip,
-.ch-icon,
-.hc-icon,
-.mobile-nav,
-.mnav-item,
-.splash-card,
-.toast,
-.conn-banner,
-.share-pill,
-.temp-banner,
-.temp-hint {
-  border-radius: 0;
-  clip-path: polygon(
-    var(--c, 10px) 0,
-    calc(100% - var(--c, 10px)) 0,
-    100% var(--c, 10px),
-    100% calc(100% - var(--c, 10px)),
-    calc(100% - var(--c, 10px)) 100%,
-    var(--c, 10px) 100%,
-    0 calc(100% - var(--c, 10px)),
-    0 var(--c, 10px)
-  );
-}
-.home-card-item { --c: 16px; }
-.sidebar .channel-item { --c: 12px; }
-.auth-card, .modal-card, .splash-card { --c: 18px; }
-.voice-prejoin-card { --c: 16px; }
-.server-rail, .mobile-nav { --c: 14px; }
-.composer, .user-bar, .voice-dock, .v-control, .auth-tabs, .mnav-item { --c: 12px; }
-.rail-item { --c: 9px; }
-.primary-button, .ghost-button, .voice-prejoin-buttons > * { --c: 10px; }
-.auth-tabs button, .auth-form input, .modal-form input[type="text"],
-.modal-form input[type="password"], .rec-send, .sidebar-action,
-.main-header-text strong, .main-header-actions .icon-button { --c: 8px; }
-.header-profile, .toast, .conn-banner, .share-pill, .temp-banner, .temp-hint { --c: 10px; }
-.pill-chip { --c: 5px; }
-.ch-icon { --c: 6px; }
-.hc-icon { --c: 8px; }
-.dock-control { --c: 6px; }
-.voice-prejoin-buttons > * { --c: 14px; }
+.mnav-item { text-transform: none; letter-spacing: -0.01em; }
+.splash-card h1 { text-transform: none; letter-spacing: -0.03em; }
 
+/* One floating rounded panel on desktop */
 @media (min-width: 821px) {
-  .sidebar, .main-pane, .member-panel {
-    --c: 20px;
+  .app-view {
+    margin: 14px;
+    height: calc(100vh - 28px);
+    column-gap: 0;
+    border-radius: 34px;
+    overflow: hidden;
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  }
+  .sidebar {
+    background: transparent;
     border-radius: 0;
-    border: 0;
-    clip-path: polygon(
-      var(--c) 0,
-      calc(100% - var(--c)) 0,
-      100% var(--c),
-      100% calc(100% - var(--c)),
-      calc(100% - var(--c)) 100%,
-      var(--c) 100%,
-      0 calc(100% - var(--c)),
-      0 var(--c)
-    );
+    border-right: 1px solid var(--line);
+    overflow: hidden;
   }
-  .member-panel { --c: 16px; background: var(--bg-1); }
+  .main-pane { border-radius: 0; background: transparent; }
+  .member-panel { border-radius: 24px; border: 1px solid var(--line); background: var(--bg-2); }
 }
 
-/* Bottom sheets on phones: only the top corners are cut */
-@media (max-width: 820px) {
-  .modal-card {
-    clip-path: polygon(18px 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%, 0 18px);
-  }
-}
-
-/* --- borders don't survive clipping: flat fills + inset rings instead --- */
-.auth-card { border: 0; }
+/* Every corner rounded: pills and big radii */
+.primary-button, .ghost-button { border-radius: 999px; padding-left: 22px; padding-right: 22px; }
+.ghost-button { border-width: 1.5px; }
+.privacy-pill { border-width: 1.5px; }
+.rec-send { border-radius: 999px; }
+.auth-tabs { border-radius: 999px; border-width: 1px; background: rgba(255, 255, 255, 0.04); }
+.auth-tabs button { border-radius: 999px; }
+.auth-card { border-radius: 30px; border-width: 1px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4); }
 .auth-form input,
 .modal-form input[type="text"],
-.modal-form input[type="password"] { border: 0; background: rgba(255, 255, 255, 0.06); }
-.auth-form input:focus { box-shadow: inset 0 0 0 2px rgba(46, 107, 232, 0.8); }
-.auth-tabs { border: 0; background: rgba(255, 255, 255, 0.05); }
-.composer { border: 0; background: var(--bg-3); }
-.modal-card { border: 0; }
-.voice-dock { border: 0; background: var(--bg-3); }
-.dock-control { border: 0; background: var(--bg-4); }
-.ghost-button { border: 0; box-shadow: inset 0 0 0 2px var(--line-strong); }
-.ghost-button:hover { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35); }
-.ghost-button.danger { box-shadow: inset 0 0 0 2px rgba(232, 68, 46, 0.5); }
-.privacy-pill { border-width: 1.5px; }
-#vScreenButton { border: 0; box-shadow: inset 0 0 0 2px var(--line-strong); }
-#vScreenButton.is-live { border: 0; box-shadow: inset 0 0 0 2px rgba(224, 163, 46, 0.75); }
-.main-header-actions .icon-button { border: 0; }
-.header-profile { border: 0; }
-.mobile-nav { border: 0; }
-.voice-prejoin-card { border: 0; background: var(--bg-3); }
+.modal-form input[type="password"] { border-radius: 15px; border-width: 1px; }
+.modal-card { border-radius: 30px; border-width: 1px; box-shadow: var(--shadow); }
+.composer { border-radius: 26px; border-width: 1px; }
+.home-card-item { border-radius: 26px; }
+.sidebar .channel-item { border-radius: 20px; }
+.server-rail { border-radius: 24px; }
+.rail-item { border-radius: 16px; }
+.rail-item:hover, .rail-item.is-active { border-radius: 14px; }
+.user-bar { border-radius: 20px; }
+.voice-dock { border-radius: 18px; border-width: 1px; }
+.dock-control { border-radius: 12px; }
+.sidebar-action { border-radius: 999px; }
+.main-header-text strong { border-radius: 999px; }
+.main-header-actions .icon-button { border-radius: 50%; border-width: 1px; }
+.header-profile { border-radius: 999px; border-width: 1px; }
+.v-control { border-radius: 999px; }
+#vScreenButton { border-width: 1.5px; }
+.voice-prejoin-card { border-radius: 30px; border: 1px solid var(--line-strong); background: var(--bg-3); }
+.voice-prejoin-buttons > * { border-radius: 30px; }
+.voice-tile { border-radius: 20px; border-width: 1px; }
+.screen-stage { border-radius: 22px; }
+.mobile-nav { border-radius: 999px; border-width: 1px; }
+.mnav-item { border-radius: 999px; }
+.splash-card { border-radius: 34px; }
+.pill-chip { border-radius: 999px; }
+.ch-icon { border-radius: 10px; }
+.hc-icon { border-radius: 16px; }
+.toast, .conn-banner { border-radius: 999px; }
 
-/* Focus rings would be clipped too — use inset rings everywhere */
-button:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-a:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 2.5px rgba(46, 107, 232, 0.85);
+/* Soft diffuse hovers instead of hard offsets */
+.primary-button:hover {
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+.home-card-item:hover {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  transform: translateY(-4px);
+  filter: saturate(1.05);
+}
+.sidebar .channel-item:hover {
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
+  filter: none;
+}
+.sidebar .channel-item.is-active {
+  box-shadow: 0 0 0 2.5px rgba(255, 255, 255, 0.85), 0 10px 26px rgba(0, 0, 0, 0.4);
 }
 
-/* Hover/active states that used outer shadows (now clipped) */
-.primary-button:hover { box-shadow: none; transform: translate(-1px, -2px); filter: brightness(1.05); }
-.primary-button:active { box-shadow: none; }
-.home-card-item:hover { box-shadow: none; transform: translate(-2px, -3px); filter: brightness(1.07); }
-.sidebar .channel-item:hover { box-shadow: none; transform: translate(-1px, -2px); filter: brightness(1.08); }
-.sidebar .channel-item.is-active { box-shadow: inset 0 0 0 3px #f4f2ee; }
-.server-rail .rail-item.is-active { box-shadow: none; }
-.voice-tile { border-radius: 10px; }
-.screen-stage { border-radius: 12px; }
-
-/* --- blueprint grid on the black desk --- */
-body,
-.auth-view,
-.splash-view {
-  background:
-    repeating-linear-gradient(0deg, transparent 0 119px, rgba(240, 238, 233, 0.05) 119px 120px),
-    repeating-linear-gradient(90deg, transparent 0 119px, rgba(240, 238, 233, 0.05) 119px 120px),
-    #080706;
-}
-
-/* --- ◇ labels with dotted leader lines --- */
-.sidebar-label,
-.member-group-label {
+/* Home stats row — the "78 Employee / 56 Hirings / 203 Projects" echo */
+.home-stats {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 30px;
+  margin: 2px 0 8px;
 }
-.sidebar-label::before,
-.member-group-label::before { content: "◇"; font-size: 10px; opacity: 0.9; }
-.sidebar-label::after,
-.member-group-label::after {
-  content: "";
-  flex: 1;
-  border-top: 2px dotted rgba(240, 238, 233, 0.16);
+.stat-cell { display: flex; align-items: baseline; gap: 9px; }
+.stat-cell b {
+  font-size: clamp(26px, 3vw, 38px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
-.sidebar-label-row .sidebar-label { flex: 1; }
+.stat-cell small { font-size: 12.5px; font-weight: 650; color: var(--text-dim); }
+.stat-cell:not(:first-child) { padding-left: 30px; border-left: 1px solid var(--line); }
 
-/* --- index numbers on home cards, like 001 / 002 / 003 --- */
-.home-cards { counter-reset: hc; }
-.home-card-item::before {
-  counter-increment: hc;
-  content: "0" counter(hc);
-  position: absolute;
-  top: 18px;
-  right: 62px;
-  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  opacity: 0.55;
-  pointer-events: none;
-}
-
-/* --- corner crop marks on the two "spec sheet" cards --- */
-.auth-card { position: relative; }
-.auth-card::before,
-.auth-card::after,
-.voice-prejoin-card::before,
-.voice-prejoin-card::after {
-  content: "";
-  position: absolute;
-  width: 15px;
-  height: 15px;
-  pointer-events: none;
-}
-.auth-card::before,
-.voice-prejoin-card::before {
-  top: 12px;
-  left: 12px;
-  border-top: 2px solid rgba(240, 238, 233, 0.4);
-  border-left: 2px solid rgba(240, 238, 233, 0.4);
-}
-.auth-card::after,
-.voice-prejoin-card::after {
-  right: 12px;
-  bottom: 12px;
-  border-bottom: 2px solid rgba(240, 238, 233, 0.4);
-  border-right: 2px solid rgba(240, 238, 233, 0.4);
-  top: auto;
-  transform: none;
-  font-size: 0;
-  color: transparent;
+@media (max-width: 820px) {
+  .modal-card { border-radius: 26px 26px 0 0; }
+  .home-stats { gap: 18px; }
+  .stat-cell:not(:first-child) { padding-left: 18px; }
 }

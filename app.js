@@ -579,6 +579,26 @@ function renderHome() {
     ? 'Jump back into your spaces, or start something new.'
     : 'Create a server for your crew, or join one with an invite link.';
 
+  const statsEl = document.getElementById('homeStats');
+  if (statsEl) {
+    let inVoice = 0;
+    for (const list of state.voiceStates.values()) {
+      inVoice += (list || []).length;
+    }
+    statsEl.hidden = false;
+    statsEl.replaceChildren(
+      el('span', { class: 'stat-cell' },
+        el('b', { text: String(servers.length) }),
+        el('small', { text: servers.length === 1 ? 'Server' : 'Servers' })),
+      el('span', { class: 'stat-cell' },
+        el('b', { text: String(state.online.size) }),
+        el('small', { text: 'Online now' })),
+      el('span', { class: 'stat-cell' },
+        el('b', { text: String(inVoice) }),
+        el('small', { text: 'In voice' }))
+    );
+  }
+
   ui.homeServerCards.replaceChildren();
   let cardIndex = 0;
   for (const server of servers) {
