@@ -714,6 +714,10 @@ function renderHome() {
         mentions ? el('span', { class: 'pill-chip alert', text: `${mentions} ping${mentions === 1 ? '' : 's'}` }) : null,
         !mentions && unread ? el('span', { class: 'pill-chip', text: 'new messages' }) : null,
         server.temp ? el('span', { class: 'pill-chip', text: `closes in ${formatRemaining(server.expiresAt)}` }) : null
+      ),
+      el('span', { class: 'hc-big' },
+        String(server.members.length),
+        el('small', { text: server.members.length === 1 ? 'member' : 'members' })
       )
     );
     card.style.setProperty('animation-delay', `${cardIndex * 45}ms`);
