@@ -6,7 +6,7 @@ ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 
-COPY server.js index.html styles.css app.js ./
+COPY server.js index.html styles.css app.js admin.html admin.css admin-console.js ./
 COPY lib ./lib
 COPY js ./js
 

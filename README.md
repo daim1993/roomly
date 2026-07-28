@@ -8,13 +8,17 @@ One Node.js process. One dependency (`ws`). No build step.
 
 **Community structure** — unlimited servers with emoji icons, text channels (topics, rename, delete), voice channels, shareable invite links (`/invite/<code>`) that work for both account holders and guests, invite reset for admins.
 
-**Text chat** — persistent history with lazy paging ("load older"), markdown-lite (`**bold**`, `*italic*`, `` `code` ``, ``` blocks, ~~strike~~, links), @mentions with autocomplete, replies, edits, deletes, emoji reactions, typing indicators, unread + mention badges everywhere (channel list, server rail, tab title), image/file attachments with drag-drop and paste, image lightbox.
+**Text chat** — persistent history with lazy paging ("load older"), markdown-lite (`**bold**`, `*italic*`, `` `code` ``, ``` blocks, ~~strike~~, links), @mentions with autocomplete, replies, edits, deletes, emoji reactions, typing indicators, unread + mention badges everywhere. Attachments render inline: **images and GIFs**, **video players**, and **voice messages** you record right in the composer (hold-to-talk mic button). Drag-drop, paste, and image lightbox included. Voice channels have their own text chat too (toggle the # button in the call).
 
-**Voice & video rooms** — multi-party WebRTC mesh calls inside voice channels, camera on/off, mute, **screen sharing** with a focused stage layout, speaking rings, live occupancy shown in the sidebar for everyone, voice stays connected while you browse text channels (dock in the sidebar), join/leave chimes.
+**Voice & video rooms** — multi-party WebRTC mesh calls inside voice channels, camera on/off, mute, **screen sharing** with a focused stage layout, **click-to-pin** anyone full-screen (Meet-style), speaking rings, live occupancy in the sidebar, a call timer, voice that stays connected while you browse (dock control bar), join/leave chimes, and **lock-screen keep-alive** on mobile (Wake Lock + Media Session) so calls survive the screen turning off.
 
 **People** — accounts (username + password, scrypt-hashed) or guest mode, display names and avatar colors, presence (online/offline), member list grouped by status with role icons, direct messages (find by username or click any member).
 
-**Moderation** — server owner + admins, promote/demote, kick, ban/unban, delete anyone's message (admins), channel management permissions, "guests can't create servers" guard.
+**Moderation** — server owner + admins, promote/demote, kick, ban/unban, delete anyone's message (admins), channel management. Guests get one auto-expiring temporary server.
+
+**Admin console** — a separate `/admin` dashboard for platform admins: live instance stats (accounts, online, in-voice, messages, storage), account management (disable/enable, reset password, promote/demote admins, delete), and server management (delete any server). The first registered account becomes the platform admin; grant more with `ADMIN_USERS` or from the console.
+
+**Storage** — durable **SQLite** database (`data/roomly.db`, WAL mode) via Node's built-in `node:sqlite`, with automatic one-time migration from the older JSON/JSONL files. Falls back to the JSON file store automatically on Node versions without `node:sqlite`.
 
 ## Run it
 
@@ -36,6 +40,9 @@ For quick testing, open the invite link in a second browser or an incognito wind
 | `MAX_VOICE_PEERS` | `12` | People per voice channel (mesh topology — see SCALING.md) |
 | `MAX_UPLOAD_MB` | `10` | Attachment size cap |
 | `TURN_URL`, `TURN_USERNAME`, `TURN_CREDENTIAL` | — | TURN relay for restrictive networks (comma-separate multiple URLs) |
+| `ADMIN_USERS` | — | Comma-separated usernames granted platform-admin on boot |
+| `GUEST_SERVER_TTL_HOURS` | `24` | Lifetime of guest-created temporary servers |
+| `ROOMLY_DB` | (auto) | Set to `files` to force the JSON store instead of SQLite |
 | `TRUST_PROXY` | off (`1` to enable) | Honor `X-Forwarded-*` behind a reverse proxy; also marks session cookies `Secure` on HTTPS |
 
 ## Production notes
@@ -60,7 +67,9 @@ docker run -p 3000:3000 -v roomly-data:/app/data roomly
 
 ```
 server.js        HTTP entry: static, auth API, uploads, WS upgrade
-lib/store.js     Persistence: JSON snapshot + per-channel JSONL logs
+lib/store.js     Persistence API (SQLite or JSON files)
+lib/db.js        SQLite backend (node:sqlite) + JSONL migration
+admin.html       Admin console (/admin) — platform-admin dashboard
 lib/auth.js      Accounts, guests, sessions (scrypt + tokens)
 lib/hub.js       Realtime hub: rooms, chat, presence, voice, signaling
 index.html       App shell (auth, rail, sidebar, chat, voice, modals)

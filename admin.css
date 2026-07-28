@@ -1,0 +1,47 @@
+:root {
+  color-scheme: dark;
+  --bg: #0a0a10; --panel: #131320; --panel2: #1a1a28; --line: rgba(255,255,255,.09);
+  --text: #eceef4; --dim: #9aa1b2; --violet: #7d39eb; --violet2: #9b5cff;
+  --lime: #c6ff33; --danger: #f04357; --amber: #ffd166; --ok: #3ecf8e;
+  font-family: Inter, ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: radial-gradient(900px 400px at 80% -10%, rgba(125,57,235,.16), transparent 60%), var(--bg); color: var(--text); min-height: 100vh; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 26px 22px 60px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 22px; }
+.brand { display: flex; align-items: center; gap: 11px; font-weight: 800; font-size: 19px; letter-spacing: -.02em; }
+.mark { width: 34px; height: 34px; border-radius: 10px; background: var(--lime); color: #050506; display: grid; place-items: center; font-weight: 900; }
+.sub { color: var(--dim); font-size: 13px; font-weight: 600; }
+a.back { color: var(--violet2); text-decoration: none; font-weight: 700; font-size: 14px; }
+h1 { font-size: clamp(26px, 3.4vw, 38px); font-weight: 900; letter-spacing: -.03em; margin: 4px 0 18px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 26px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 15px 16px; }
+.card b { display: block; font-size: 26px; font-weight: 900; letter-spacing: -.02em; }
+.card span { color: var(--dim); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.card.lime b { color: var(--lime); } .card.violet b { color: var(--violet2); }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 18px; margin-bottom: 22px; }
+.sec-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.sec-head h2 { margin: 0; font-size: 17px; letter-spacing: -.01em; }
+input[type=search] { background: var(--panel2); border: 1px solid var(--line); color: var(--text); border-radius: 11px; padding: 9px 13px; font: inherit; width: 240px; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; color: var(--dim); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+.tag { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; }
+.tag.admin { background: rgba(125,57,235,.2); color: var(--violet2); }
+.tag.guest { background: rgba(255,255,255,.1); color: var(--dim); }
+.tag.online { background: rgba(62,207,142,.15); color: var(--ok); }
+.tag.off { background: rgba(240,67,87,.16); color: var(--danger); }
+.tag.temp { background: rgba(255,209,102,.15); color: var(--amber); }
+button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--panel2); color: var(--text); border-radius: 9px; padding: 5px 11px; font-size: 12px; font-weight: 700; margin: 1px 2px; }
+button:hover { border-color: var(--violet2); }
+button.danger { color: var(--danger); border-color: rgba(240,67,87,.4); }
+button.danger:hover { background: rgba(240,67,87,.12); }
+button.good { color: var(--lime); border-color: rgba(198,255,51,.4); }
+.muted { color: var(--dim); }
+#toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: #05060a; border: 1px solid var(--line); border-radius: 12px; padding: 11px 20px; font-weight: 700; font-size: 14px; display: none; max-width: 90vw; }
+#gate { display: none; text-align: center; padding: 90px 20px; }
+#gate h2 { font-size: 26px; }
+#gate a { color: var(--violet2); }
+.dbchip { font-size: 11px; font-weight: 800; letter-spacing: .05em; padding: 4px 10px; border-radius: 99px; background: rgba(198,255,51,.12); color: var(--lime); border: 1px solid rgba(198,255,51,.3); }
+@media (max-width: 720px) { .hide-sm { display: none; } input[type=search] { width: 100%; } }

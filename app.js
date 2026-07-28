@@ -12,6 +12,7 @@ import { EMOJI_GROUPS, QUICK_REACTIONS } from '/js/emoji.js';
 import { renderContent, contentPreview } from '/js/markdown.js';
 import { RoomlySocket } from '/js/socket.js';
 import { VoiceManager } from '/js/rtc.js';
+import * as fx from '/js/fx.js';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -54,6 +55,7 @@ const ui = {
   channelIcon: $('#channelIcon'),
   channelTitle: $('#channelTitle'),
   channelTopic: $('#channelTopic'),
+  voiceChatButton: $('#voiceChatButton'),
   invitePeopleButton: $('#invitePeopleButton'),
   toggleMembersButton: $('#toggleMembersButton'),
   chatView: $('#chatView'),
@@ -71,6 +73,12 @@ const ui = {
   emojiButton: $('#emojiButton'),
   sendButton: $('#sendButton'),
   fileInput: $('#fileInput'),
+  voiceMsgButton: $('#voiceMsgButton'),
+  recBar: $('#recBar'),
+  recTime: $('#recTime'),
+  recCancel: $('#recCancel'),
+  recSend: $('#recSend'),
+  contentStack: document.querySelector('.content-stack'),
   voiceView: $('#voiceView'),
   voicePrejoin: $('#voicePrejoin'),
   voicePrejoinTitle: $('#voicePrejoinTitle'),
@@ -125,6 +133,7 @@ const state = {
   typing: new Map(), // channelKey -> Map<userId, expiresAt>
   view: { kind: 'home' },
   mobilePane: 'home', // 'home' | 'nav' | 'content' — phone-size stack navigation
+  voiceChatOpen: false,
   memberPanelOpen: true,
   replyTo: null,
   editingId: null,
@@ -460,7 +469,9 @@ function renderVoiceChannelItem(server, channel, cardIndex = 0) {
     el('span', { class: 'ch-icon' }, icon('i-speaker')),
     el('span', { class: 'channel-name', text: channel.name }),
     el('span', { class: 'ch-pills' },
-      participants.length ? el('span', { class: 'pill-chip live channel-live', text: `● ${participants.length} live` }) : null
+      participants.length ? el('span', { class: 'pill-chip live channel-live', text: `● ${participants.length} live` }) : null,
+      (state.mentions[channelKey] || 0) ? el('span', { class: 'pill-chip mention-badge', text: `${state.mentions[channelKey]} ping${state.mentions[channelKey] === 1 ? '' : 's'}` }) : null,
+      !(state.mentions[channelKey] || 0) && isUnread(channelKey, channel.lastAt) && !active ? el('span', { class: 'pill-chip', text: 'new' }) : null
     )
   );
   item.classList.toggle('is-active', active);
@@ -520,6 +531,7 @@ function renderVoiceDock() {
   ui.voiceDock.hidden = !connected;
   ui.sharePill.hidden = !(connected && voice.screenStream);
   applyMobileLayout();
+  syncCallKeepAlive();
   if (!connected) {
     return;
   }
@@ -599,8 +611,13 @@ function renderMainView() {
   if (view.kind === 'home') {
     renderHome();
   }
-  ui.chatView.hidden = !(view.kind === 'text' || view.kind === 'dm');
+  const chatShown = view.kind === 'text' || view.kind === 'dm' ||
+    (view.kind === 'voice' && state.voiceChatOpen);
+  ui.chatView.hidden = !chatShown;
   ui.voiceView.hidden = view.kind !== 'voice';
+  ui.contentStack.classList.toggle('voice-chat', view.kind === 'voice' && state.voiceChatOpen);
+  ui.voiceChatButton.hidden = view.kind !== 'voice';
+  ui.voiceChatButton.setAttribute('aria-pressed', String(state.voiceChatOpen));
 
   // Level-2 animation: slide the pane in whenever the destination changes.
   const signature = `${view.kind}:${view.serverId || ''}:${view.channelId || view.dmId || ''}`;
@@ -641,7 +658,7 @@ function renderMainView() {
     ui.channelTopic.textContent = channel ? channel.topic || '' : '';
   }
 
-  if (view.kind === 'text' || view.kind === 'dm') {
+  if (view.kind === 'text' || view.kind === 'dm' || view.kind === 'voice') {
     ui.composerInput.placeholder = view.kind === 'dm'
       ? `Message @${ui.channelTitle.textContent}`
       : `Message #${ui.channelTitle.textContent}`;
@@ -705,6 +722,7 @@ function renderMembers() {
 function setView(view) {
   state.view = view;
   state.mobilePane = view.kind === 'home' ? 'home' : 'content';
+  state.voiceChatOpen = false;
   closePopovers();
   cancelReply();
   stopEditing();
@@ -951,7 +969,19 @@ function buildMessageContent(message) {
 }
 
 function buildAttachment(attachment) {
-  const isImage = /^image\//.test(attachment.type || '');
+  const type = attachment.type || '';
+  if (/^video\//.test(type)) {
+    return el('span', { class: 'attachment-media' },
+      el('video', { controls: true, preload: 'metadata', src: attachment.url })
+    );
+  }
+  if (/^audio\//.test(type) || /^voice-message/.test(attachment.name || '')) {
+    return el('span', { class: 'attachment-voice' },
+      el('span', { class: 'voice-chip' }, icon('i-mic'), 'Voice message'),
+      el('audio', { controls: true, preload: 'metadata', src: attachment.url })
+    );
+  }
+  const isImage = /^image\//.test(type);
   if (isImage) {
     const img = el('img', { src: attachment.url, alt: attachment.name, loading: 'lazy' });
     const button = el('button', { class: 'attachment-image', type: 'button', title: attachment.name }, img);
@@ -994,9 +1024,13 @@ function buildReactions(message) {
     class: 'reaction-chip reaction-add',
     type: 'button',
     'aria-label': 'Add reaction',
-    onclick: (event) => openEmojiPopup(event.currentTarget, (emoji) => {
-      socket.request('react', { channelKey, messageId: message.id, emoji, on: true }).catch((error) => toast(error.message, true));
-    })
+    onclick: (event) => {
+      const anchor = event.currentTarget.getBoundingClientRect();
+      openEmojiPopup(event.currentTarget, (emoji) => {
+        fx.emojiBurst(anchor.left + anchor.width / 2, anchor.top, emoji);
+        socket.request('react', { channelKey, messageId: message.id, emoji, on: true }).catch((error) => toast(error.message, true));
+      });
+    }
   }, icon('i-emoji'));
   wrap.append(add);
   return wrap;
@@ -1006,9 +1040,13 @@ function buildMessageActions(channelKey, message) {
   const actions = el('div', { class: 'msg-actions' });
   actions.append(el('button', {
     class: 'icon-button', type: 'button', title: 'Add reaction',
-    onclick: (event) => openEmojiPopup(event.currentTarget, (emoji) => {
-      socket.request('react', { channelKey, messageId: message.id, emoji, on: true }).catch((error) => toast(error.message, true));
-    })
+    onclick: (event) => {
+      const anchor = event.currentTarget.getBoundingClientRect();
+      openEmojiPopup(event.currentTarget, (emoji) => {
+        fx.emojiBurst(anchor.left + anchor.width / 2, anchor.top, emoji);
+        socket.request('react', { channelKey, messageId: message.id, emoji, on: true }).catch((error) => toast(error.message, true));
+      });
+    }
   }, icon('i-emoji')));
 
   actions.append(el('button', {
@@ -1253,9 +1291,11 @@ function detokenizeMentions(content) {
   });
 }
 
+const CHATTY_KINDS = new Set(['text', 'dm', 'voice']);
+
 async function sendCurrentMessage() {
   const channelKey = activeChannelKey();
-  if (!channelKey || (state.view.kind !== 'text' && state.view.kind !== 'dm')) {
+  if (!channelKey || !CHATTY_KINDS.has(state.view.kind)) {
     return;
   }
   if (state.pendingAttachments.some((entry) => entry.uploading)) {
@@ -1299,6 +1339,7 @@ async function sendCurrentMessage() {
     state.lastRead[ack.channelKey] = ack.message.createdAt + 1;
     renderSidebar();
     renderRail();
+    fx.ping(ui.sendButton);
   } catch (error) {
     toast(error.message, true);
     ui.composerInput.value = raw;
@@ -1474,6 +1515,177 @@ function closeMentionPopup() {
   mentionState.open = false;
   ui.mentionPopup.hidden = true;
 }
+
+// ------------------------------------------------------- voice messages
+
+const rec = { recorder: null, timer: null, chunks: [], startedAt: 0, cancelled: false };
+
+function recTimeText() {
+  const seconds = Math.floor((Date.now() - rec.startedAt) / 1000);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+async function startVoiceRecording() {
+  const channelKey = activeChannelKey();
+  if (rec.recorder || !channelKey || !CHATTY_KINDS.has(state.view.kind)) {
+    return;
+  }
+  if (typeof MediaRecorder === 'undefined') {
+    toast('Voice messages are not supported in this browser.', true);
+    return;
+  }
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true }
+    });
+  } catch {
+    toast('Microphone access was blocked.', true);
+    return;
+  }
+
+  const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+    ? 'audio/webm;codecs=opus'
+    : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+  rec.recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+  rec.chunks = [];
+  rec.cancelled = false;
+  rec.startedAt = Date.now();
+
+  rec.recorder.addEventListener('dataavailable', (event) => {
+    if (event.data && event.data.size) {
+      rec.chunks.push(event.data);
+    }
+  });
+  rec.recorder.addEventListener('stop', async () => {
+    for (const track of stream.getTracks()) {
+      track.stop();
+    }
+    const wasCancelled = rec.cancelled;
+    const durationMs = Date.now() - rec.startedAt;
+    const blob = new Blob(rec.chunks, { type: 'audio/webm' });
+    rec.recorder = null;
+    rec.chunks = [];
+    if (wasCancelled || durationMs < 600 || blob.size < 300) {
+      return;
+    }
+    await sendVoiceMessage(blob);
+  });
+
+  rec.recorder.start(250);
+  ui.recBar.hidden = false;
+  ui.voiceMsgButton.classList.add('is-rec');
+  ui.recTime.textContent = '0:00';
+  rec.timer = setInterval(() => {
+    ui.recTime.textContent = recTimeText();
+    if (Date.now() - rec.startedAt > 5 * 60 * 1000) {
+      stopVoiceRecording(false); // hard cap at five minutes
+    }
+  }, 500);
+}
+
+function stopVoiceRecording(cancel) {
+  if (!rec.recorder) {
+    return;
+  }
+  rec.cancelled = cancel;
+  clearInterval(rec.timer);
+  ui.recBar.hidden = true;
+  ui.voiceMsgButton.classList.remove('is-rec');
+  try {
+    rec.recorder.stop();
+  } catch {
+    rec.recorder = null;
+  }
+}
+
+async function sendVoiceMessage(blob) {
+  const channelKey = activeChannelKey();
+  if (!channelKey || !CHATTY_KINDS.has(state.view.kind)) {
+    return;
+  }
+  try {
+    const fileName = `voice-message-${Date.now()}.webm`;
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      headers: {
+        'X-File-Name': btoa(fileName),
+        'Content-Type': 'application/octet-stream'
+      },
+      body: blob
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Upload failed.');
+    }
+    const attachment = { ...data.attachment, type: 'audio/webm', name: fileName };
+    const ack = await socket.request('send', { channelKey, content: '', attachments: [attachment], replyTo: null });
+    insertMessage(ack.channelKey, ack.message);
+    bumpChannelActivity(ack.channelKey, ack.message.createdAt);
+    state.lastRead[ack.channelKey] = ack.message.createdAt + 1;
+    renderSidebar();
+    renderRail();
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+// ---------------------------------------------- call keep-alive (lock screen)
+
+let wakeLock = null;
+
+async function syncCallKeepAlive() {
+  const active = voice.active;
+  try {
+    if (active && !wakeLock && 'wakeLock' in navigator && document.visibilityState === 'visible') {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => {
+        wakeLock = null;
+      });
+    } else if (!active && wakeLock) {
+      const lock = wakeLock;
+      wakeLock = null;
+      await lock.release();
+    }
+  } catch {
+    wakeLock = null;
+  }
+
+  if ('mediaSession' in navigator) {
+    try {
+      if (active && voice.channelKey) {
+        const [, serverId, channelId] = voice.channelKey.split(':');
+        const channel = getChannel(serverId, channelId);
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: channel ? `Voice — ${channel.name}` : 'Roomly call',
+          artist: 'Roomly',
+          album: 'Call in progress'
+        });
+        navigator.mediaSession.playbackState = 'playing';
+        navigator.mediaSession.setActionHandler('play', () => {});
+        navigator.mediaSession.setActionHandler('pause', () => {});
+      } else {
+        navigator.mediaSession.metadata = null;
+        navigator.mediaSession.playbackState = 'none';
+      }
+    } catch {}
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    return;
+  }
+  syncCallKeepAlive();
+  if (voice.active) {
+    try {
+      voice.ensureAudioContext();
+    } catch {}
+    for (const audio of voiceAudioEls.values()) {
+      audio.play().catch(() => {});
+    }
+  }
+});
 
 // ============================================================== voice view
 
@@ -1962,6 +2174,7 @@ function openAddServerModal(initial = 'choose') {
             applyServerAdded(ack.server);
             openServer(ack.server.id);
             openInviteModal(ack.server);
+            fx.confetti();
           } catch (requestError) {
             error.textContent = requestError.message;
           }
@@ -1999,6 +2212,7 @@ function openAddServerModal(initial = 'choose') {
             applyServerAdded(ack.server, ack.users);
             openServer(ack.server.id);
             toast(`Welcome to ${ack.server.name}!`);
+            fx.confetti();
           } catch (requestError) {
             error.textContent = requestError.message;
           }
@@ -2276,6 +2490,10 @@ function openUserSettings() {
         )
       ),
       el('div', { class: 'danger-zone' },
+        state.me.platformAdmin ? el('button', {
+          class: 'ghost-button', type: 'button',
+          onclick: () => window.open('/admin', '_blank')
+        }, icon('i-shield'), 'Open admin console') : null,
         el('button', {
           class: 'ghost-button', type: 'button',
           onclick: async () => {
@@ -2413,6 +2631,7 @@ function applyReady(snapshot) {
         applyServerAdded(ack.server, ack.users);
         openServer(ack.server.id);
         toast(`Welcome to ${ack.server.name}!`);
+        fx.confetti();
       })
       .catch((error) => toast(error.message, true));
     history.replaceState({}, '', '/');
@@ -2774,7 +2993,7 @@ function wireUi() {
     if (now - lastTypingSentAt > 2500 && ui.composerInput.value.trim() && !state.editingId) {
       lastTypingSentAt = now;
       const channelKey = activeChannelKey();
-      if (channelKey && (state.view.kind === 'text' || state.view.kind === 'dm')) {
+      if (channelKey && CHATTY_KINDS.has(state.view.kind)) {
         socket.push('typing', { channelKey });
       }
     }
@@ -2836,6 +3055,22 @@ function wireUi() {
       autoSizeComposer();
     });
   });
+  ui.voiceChatButton.addEventListener('click', () => {
+    state.voiceChatOpen = !state.voiceChatOpen;
+    renderMainView();
+    if (state.voiceChatOpen) {
+      openChat(activeChannelKey());
+    }
+  });
+  ui.voiceMsgButton.addEventListener('click', () => {
+    if (rec.recorder) {
+      stopVoiceRecording(false);
+    } else {
+      startVoiceRecording();
+    }
+  });
+  ui.recSend.addEventListener('click', () => stopVoiceRecording(false));
+  ui.recCancel.addEventListener('click', () => stopVoiceRecording(true));
   ui.attachButton.addEventListener('click', () => ui.fileInput.click());
   ui.fileInput.addEventListener('change', () => {
     uploadFiles(Array.from(ui.fileInput.files || []));
@@ -2861,7 +3096,7 @@ function wireUi() {
   ui.messageScroll.addEventListener('scroll', debounce(() => {
     if (nearBottom() && document.hasFocus()) {
       const channelKey = activeChannelKey();
-      if (channelKey && (state.view.kind === 'text' || state.view.kind === 'dm')) {
+      if (channelKey && CHATTY_KINDS.has(state.view.kind)) {
         const bucket = state.messages.get(channelKey);
         const last = bucket && bucket.list[bucket.list.length - 1];
         if (last && isUnread(channelKey, last.createdAt)) {
@@ -2955,7 +3190,7 @@ function wireUi() {
 
   window.addEventListener('focus', () => {
     const channelKey = activeChannelKey();
-    if (channelKey && (state.view.kind === 'text' || state.view.kind === 'dm') && nearBottom()) {
+    if (channelKey && CHATTY_KINDS.has(state.view.kind) && nearBottom() && !ui.chatView.hidden) {
       markRead(channelKey);
     }
   });
@@ -2967,8 +3202,30 @@ function wireUi() {
 
 // ============================================================== boot
 
+function initFx() {
+  try {
+    fx.aurora(ui.authView, { intensity: 1, blobs: 6 });
+    fx.aurora(ui.homeView, { intensity: 0.55, blobs: 5 });
+    fx.aurora(ui.voiceView, { intensity: 0.4, blobs: 4 });
+    fx.shapes(ui.authView, 8);
+    fx.shapes(ui.homeView, 6);
+    fx.tilt(ui.homeServerCards, '.home-card-item');
+    fx.speakingGlow({
+      getAnalysers: () => voice.analysers,
+      getTarget: (key) => {
+        const tile = voiceTileEls.get(key === 'self' ? 'self' : key);
+        if (state.pinned && (state.pinned === key || (key === 'self' && state.pinned === 'self'))) {
+          return ui.screenStage;
+        }
+        return tile || null;
+      }
+    });
+  } catch {}
+}
+
 async function boot() {
   state.memberPanelOpen = !isMobile();
+  initFx();
   const inviteMatch = location.pathname.match(/^\/invite\/([a-z0-9]+)/i);
   if (inviteMatch) {
     state.pendingInvite = inviteMatch[1].toLowerCase();

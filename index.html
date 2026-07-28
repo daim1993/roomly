@@ -308,6 +308,9 @@
             <span id="channelTopic"></span>
           </div>
           <div class="main-header-actions">
+            <button id="voiceChatButton" class="icon-button" type="button" aria-label="Toggle channel chat" aria-pressed="false" hidden>
+              <svg><use href="#i-hash"></use></svg>
+            </button>
             <button id="invitePeopleButton" class="ghost-button small" type="button" hidden>
               <svg><use href="#i-link"></use></svg> Invite
             </button>
@@ -332,6 +335,13 @@
                 <button id="replyBarCancel" class="icon-button tiny" type="button" aria-label="Cancel reply"><svg><use href="#i-x"></use></svg></button>
               </div>
               <div id="attachPreview" class="attach-preview" hidden></div>
+              <div id="recBar" class="rec-bar" hidden>
+                <span class="rec-dot"></span>
+                <strong id="recTime">0:00</strong>
+                <span class="rec-hint">Recording voice message…</span>
+                <button id="recCancel" class="icon-button" type="button" aria-label="Cancel recording"><svg><use href="#i-trash"></use></svg></button>
+                <button id="recSend" class="rec-send" type="button"><svg><use href="#i-send"></use></svg> Send</button>
+              </div>
               <footer class="composer">
                 <button id="attachButton" class="icon-button composer-side" type="button" aria-label="Attach a file">
                   <svg><use href="#i-attach"></use></svg>
@@ -339,6 +349,9 @@
                 <textarea id="composerInput" rows="1" maxlength="4000" placeholder="Message"></textarea>
                 <button id="emojiButton" class="icon-button composer-side" type="button" aria-label="Emoji">
                   <svg><use href="#i-emoji"></use></svg>
+                </button>
+                <button id="voiceMsgButton" class="icon-button composer-side" type="button" aria-label="Record a voice message" title="Voice message">
+                  <svg><use href="#i-mic"></use></svg>
                 </button>
                 <button id="sendButton" class="icon-button composer-send" type="button" aria-label="Send message">
                   <svg><use href="#i-send"></use></svg>

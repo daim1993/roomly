@@ -51,7 +51,11 @@ const STATIC_FILES = new Map([
   ['/', 'index.html'],
   ['/index.html', 'index.html'],
   ['/styles.css', 'styles.css'],
-  ['/app.js', 'app.js']
+  ['/app.js', 'app.js'],
+  ['/admin', 'admin.html'],
+  ['/admin.html', 'admin.html'],
+  ['/admin.css', 'admin.css'],
+  ['/admin-console.js', 'admin-console.js']
 ]);
 
 const MIME = new Map(Object.entries({
@@ -339,6 +343,185 @@ function serveUpload(request, response, pathname) {
   });
 }
 
+// ------------------------------------------------------------- admin console
+
+function currentAdmin(request) {
+  const current = currentUser(request);
+  if (!current || current.user.guest || !current.user.platformAdmin) {
+    return null;
+  }
+  return current;
+}
+
+function uploadsUsage() {
+  let files = 0;
+  let bytes = 0;
+  try {
+    for (const name of fs.readdirSync(store.uploadsDir)) {
+      try {
+        const stat = fs.statSync(path.join(store.uploadsDir, name));
+        if (stat.isFile()) {
+          files += 1;
+          bytes += stat.size;
+        }
+      } catch {}
+    }
+  } catch {}
+  return { files, bytes };
+}
+
+async function handleAdminApi(request, response, pathname) {
+  const admin = currentAdmin(request);
+  if (!admin) {
+    sendJson(response, 403, { error: 'Platform admin access required.' });
+    return;
+  }
+  const state = store.state;
+
+  if (pathname === '/api/admin/overview' && request.method === 'GET') {
+    const users = Object.values(state.users);
+    const servers = Object.values(state.servers);
+    sendJson(response, 200, {
+      accounts: users.filter((user) => !user.guest).length,
+      guests: users.filter((user) => user.guest).length,
+      disabled: users.filter((user) => user.disabled).length,
+      servers: servers.length,
+      tempServers: servers.filter((server) => server.temp).length,
+      online: hub.connsByUser.size,
+      inVoice: Array.from(hub.voice.values()).reduce((sum, set) => sum + set.size, 0),
+      messages: store.backend ? store.backend.totalMessages() : null,
+      uploads: uploadsUsage(),
+      db: store.backend ? 'sqlite' : 'json-files',
+      uptimeSec: Math.floor(process.uptime())
+    });
+    return;
+  }
+
+  if (pathname === '/api/admin/users' && request.method === 'GET') {
+    const requestUrl = new URL(request.url, 'http://localhost');
+    const query = (requestUrl.searchParams.get('q') || '').toLowerCase();
+    const list = Object.values(state.users)
+      .filter((user) => !query ||
+        (user.username || '').includes(query) ||
+        (user.displayName || '').toLowerCase().includes(query))
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 500)
+      .map((user) => ({
+        id: user.id,
+        username: user.username,
+        name: user.displayName,
+        guest: Boolean(user.guest),
+        disabled: Boolean(user.disabled),
+        platformAdmin: Boolean(user.platformAdmin),
+        createdAt: user.createdAt,
+        online: hub.connsByUser.has(user.id),
+        serversOwned: Object.values(state.servers).filter((server) => server.ownerId === user.id).length
+      }));
+    sendJson(response, 200, { users: list });
+    return;
+  }
+
+  if (pathname === '/api/admin/users' && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    const target = state.users[String(body.userId || '')];
+    if (!target) {
+      sendJson(response, 404, { error: 'User not found.' });
+      return;
+    }
+    if (target.id === admin.user.id && body.action !== 'demote') {
+      sendJson(response, 400, { error: 'Use another admin account to manage your own.' });
+      return;
+    }
+    if (target.platformAdmin && target.id !== admin.user.id) {
+      sendJson(response, 400, { error: 'Other platform admins cannot be managed from here.' });
+      return;
+    }
+
+    switch (body.action) {
+      case 'disable':
+        target.disabled = true;
+        store.markDirty();
+        hub.adminDisconnectUser(target.id);
+        sendJson(response, 200, { ok: true });
+        return;
+      case 'enable':
+        delete target.disabled;
+        store.markDirty();
+        sendJson(response, 200, { ok: true });
+        return;
+      case 'promote':
+        if (target.guest) {
+          sendJson(response, 400, { error: 'Guests cannot be platform admins.' });
+          return;
+        }
+        target.platformAdmin = true;
+        store.markDirty();
+        sendJson(response, 200, { ok: true });
+        return;
+      case 'demote':
+        delete target.platformAdmin;
+        store.markDirty();
+        sendJson(response, 200, { ok: true });
+        return;
+      case 'reset-password': {
+        if (target.guest) {
+          sendJson(response, 400, { error: 'Guests have no password.' });
+          return;
+        }
+        const temp = crypto.randomBytes(8).toString('base64url');
+        applyPasswordReset(target, temp);
+        sendJson(response, 200, { ok: true, tempPassword: temp });
+        return;
+      }
+      case 'delete':
+        await hub.adminDeleteUser(target.id);
+        sendJson(response, 200, { ok: true });
+        return;
+      default:
+        sendJson(response, 400, { error: 'Unknown action.' });
+    }
+    return;
+  }
+
+  if (pathname === '/api/admin/servers' && request.method === 'GET') {
+    const list = Object.values(state.servers)
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 500)
+      .map((server) => ({
+        id: server.id,
+        name: server.name,
+        icon: server.icon,
+        ownerId: server.ownerId,
+        ownerName: (state.users[server.ownerId] || {}).displayName || 'unknown',
+        members: Object.keys(server.members).length,
+        channels: Object.keys(server.channels).length,
+        temp: Boolean(server.temp),
+        expiresAt: server.expiresAt || null,
+        createdAt: server.createdAt
+      }));
+    sendJson(response, 200, { servers: list });
+    return;
+  }
+
+  if (pathname === '/api/admin/servers' && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    const server = state.servers[String(body.serverId || '')];
+    if (!server) {
+      sendJson(response, 404, { error: 'Server not found.' });
+      return;
+    }
+    if (body.action === 'delete') {
+      await hub.destroyServer(server, 'deleted');
+      sendJson(response, 200, { ok: true });
+      return;
+    }
+    sendJson(response, 400, { error: 'Unknown action.' });
+    return;
+  }
+
+  sendJson(response, 404, { error: 'Not found' });
+}
+
 // ------------------------------------------------------------------- server
 
 const server = http.createServer(async (request, response) => {
@@ -356,6 +539,11 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
+    if (pathname.startsWith('/api/admin/')) {
+      await handleAdminApi(request, response, pathname);
+      return;
+    }
+
     if (pathname.startsWith('/api/')) {
       if (pathname === '/api/me') {
         const current = currentUser(request);
@@ -368,7 +556,8 @@ const server = http.createServer(async (request, response) => {
             id: current.user.id,
             name: current.user.displayName,
             username: current.user.username,
-            guest: current.user.guest
+            guest: current.user.guest,
+            platformAdmin: Boolean(current.user.platformAdmin)
           }
         });
         return;
@@ -427,6 +616,31 @@ const server = http.createServer(async (request, response) => {
 });
 
 const hub = new Hub({ server, store, auth, config });
+
+// Grant platform-admin to usernames listed in ADMIN_USERS (comma-separated).
+for (const name of String(process.env.ADMIN_USERS || '').split(',')) {
+  const user = auth ? store.getUserByUsername(name.trim()) : null;
+  if (user && !user.guest && !user.platformAdmin) {
+    user.platformAdmin = true;
+    store.markDirty();
+    console.log(`Granted platform admin to @${user.username}`);
+  }
+}
+
+function applyPasswordReset(target, tempPassword) {
+  const scryptSalt = crypto.randomBytes(16);
+  const hash = crypto.scryptSync(tempPassword, scryptSalt, 32, { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
+  target.pass = `s1:${scryptSalt.toString('hex')}:${hash.toString('hex')}`;
+  // Old sessions die with the old password.
+  for (const [token, session] of Object.entries(store.state.sessions)) {
+    if (session.userId === target.id) {
+      delete store.state.sessions[token];
+    }
+  }
+  store.markDirty();
+  hub.adminDisconnectUser(target.id);
+  return true;
+}
 
 server.listen(config.port, config.host, () => {
   console.log(`Roomly is running at http://localhost:${config.port}`);
