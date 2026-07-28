@@ -2541,3 +2541,209 @@ svg {
   from { transform: translateY(40px); opacity: 0.4; }
   to { transform: translateY(0); opacity: 1; }
 }
+
+
+/* -------------------------------------------------------- participant pin */
+
+.voice-tile { cursor: pointer; }
+.voice-tile.is-pinned {
+  border-color: transparent;
+  box-shadow: 0 0 0 2.5px rgba(255, 255, 255, 0.9), 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+.screen-stage video.mirror { transform: scaleX(-1); }
+
+.unpin-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+}
+.unpin-button:hover { background: rgba(0, 0, 0, 0.85); color: #fff; }
+
+.stage-avatar {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background:
+    radial-gradient(420px 260px at 50% 38%, rgba(125, 57, 235, 0.14), transparent 70%),
+    #070a0f;
+}
+.stage-avatar .stage-avatar-face {
+  width: 110px;
+  height: 110px;
+  font-size: 38px;
+}
+.stage-avatar strong { font-size: 19px; letter-spacing: -0.01em; }
+.stage-avatar small { color: var(--text-dim); font-size: 13px; }
+
+
+/* ============================================== SPORT-CARD TASTE LAYER
+   Big soft radii, lime CTAs with ink text, white segmented pills, and
+   giant chunky call controls (the Pause/Finish look). */
+
+/* Lime primary actions, ink text */
+.primary-button {
+  background: linear-gradient(135deg, #d3ff5e, var(--lime));
+  color: #101204;
+  border-radius: 15px;
+  font-weight: 800;
+  box-shadow: 0 10px 26px rgba(198, 255, 51, 0.22);
+}
+.primary-button:hover { filter: brightness(1.04) saturate(1.05); }
+.ghost-button { border-radius: 14px; }
+
+/* Segmented pills: active goes white like the month selector */
+.auth-tabs { border-radius: 15px; }
+.auth-tabs button { border-radius: 11px; }
+.auth-tabs button.is-active {
+  background: #f4f4f6;
+  color: #0b0b0e;
+}
+
+/* Choice cards select in lime */
+.choice-card { border-radius: 16px; }
+.choice-card:hover, .choice-card.is-selected {
+  border-color: rgba(198, 255, 51, 0.7);
+  color: var(--text);
+  background: rgba(198, 255, 51, 0.09);
+}
+
+/* Softer, larger surfaces everywhere */
+.modal-card { border-radius: 24px; }
+.popover, .emoji-popup, .mention-popup { border-radius: 18px; }
+.composer { border-radius: 18px; }
+.voice-tile { border-radius: 18px; }
+.screen-stage { border-radius: 20px; }
+.auth-card { border-radius: 24px; }
+.auth-form input, .modal-form input[type="text"], .modal-form input[type="password"] { border-radius: 13px; }
+.member-panel { border-radius: 0; }
+.voice-dock { border-radius: 16px; }
+.temp-banner, .temp-hint { border-radius: 14px; }
+
+/* Call timer — the "Total time" block */
+.call-timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  flex: none;
+  padding: 2px 0 0;
+}
+.call-timer span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.call-timer strong {
+  font-size: 27px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+/* Giant chunky call controls (Pause / Finish energy) */
+.voice-controls {
+  gap: 10px;
+  padding: 6px 0 10px;
+  justify-content: center;
+}
+.v-control {
+  flex: 1 1 0;
+  max-width: 150px;
+  width: auto;
+  height: 68px;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 19px;
+  border: 1px solid transparent;
+}
+.v-control svg { width: 21px; height: 21px; }
+.vc-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+#vMicButton {
+  background: linear-gradient(135deg, #8f6bff, #6e5bef);
+  color: #fff;
+}
+#vMicButton:hover { filter: brightness(1.07); }
+#vMicButton.is-off {
+  background: var(--danger-soft);
+  border-color: rgba(240, 67, 87, 0.5);
+  color: var(--danger);
+}
+#vCamButton {
+  background: linear-gradient(135deg, #d3ff5e, var(--lime));
+  color: #101204;
+}
+#vCamButton:hover { filter: brightness(1.05); }
+#vCamButton.is-off {
+  background: var(--bg-3);
+  border-color: var(--line-strong);
+  color: var(--text-dim);
+}
+#vScreenButton {
+  background: var(--bg-3);
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+#vScreenButton.is-live {
+  background: rgba(198, 255, 51, 0.14);
+  border-color: rgba(198, 255, 51, 0.6);
+  color: var(--lime);
+  box-shadow: 0 0 24px rgba(198, 255, 51, 0.2);
+}
+.v-control.leave {
+  width: auto;
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+/* Prejoin: two giant side-by-side actions */
+.voice-prejoin-card { max-width: 480px; width: 100%; }
+.voice-prejoin-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  margin-top: 14px;
+}
+.voice-prejoin-buttons > * {
+  width: 100%;
+  height: 108px;
+  border-radius: 22px;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+}
+.voice-prejoin-buttons svg { width: 24px; height: 24px; }
+#voiceJoinMicButton {
+  background: linear-gradient(135deg, #8f6bff, #6e5bef);
+  border: 0;
+  color: #fff;
+}
+#voiceJoinMicButton:hover { filter: brightness(1.07); background: linear-gradient(135deg, #8f6bff, #6e5bef); }
+
+@media (max-width: 820px) {
+  .v-control { height: 60px; max-width: none; border-radius: 17px; }
+  .vc-label { font-size: 10px; }
+  .call-timer strong { font-size: 23px; }
+  .voice-prejoin-buttons { grid-template-columns: 1fr; }
+  .voice-prejoin-buttons > * { height: 78px; flex-direction: row; }
+}

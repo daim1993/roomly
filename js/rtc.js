@@ -222,6 +222,7 @@ export class VoiceManager {
 
     this.active = true;
     this.channelKey = channelKey;
+    this.joinedAt = Date.now();
     this.syncPeers(ack.participants || []);
     this.startSpeakingLoop();
     this.onUpdate();
@@ -237,6 +238,7 @@ export class VoiceManager {
     }
     this.active = false;
     this.channelKey = null;
+    this.joinedAt = null;
 
     for (const peer of this.peers.values()) {
       this.destroyPeer(peer, false);

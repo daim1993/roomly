@@ -368,6 +368,10 @@
               <div id="voiceStage" class="voice-stage" hidden>
                 <div id="screenStage" class="screen-stage" hidden>
                   <video id="screenVideo" autoplay playsinline></video>
+                  <div id="stageAvatar" class="stage-avatar" hidden></div>
+                  <button id="unpinButton" class="icon-button unpin-button" type="button" aria-label="Unpin" title="Unpin" hidden>
+                    <svg><use href="#i-x"></use></svg>
+                  </button>
                   <span id="screenLabel" class="screen-label"></span>
                   <div id="screenSelfNote" class="screen-self-note" hidden>
                     <svg><use href="#i-screen"></use></svg>
@@ -379,21 +383,29 @@
                   </div>
                 </div>
                 <div id="voiceGrid" class="voice-grid" data-count="1"></div>
+                <div class="call-timer">
+                  <span>In call</span>
+                  <strong id="callTimer">00:00</strong>
+                </div>
                 <footer class="voice-controls">
                   <button id="vMicButton" class="v-control" type="button" aria-label="Toggle microphone" aria-pressed="true">
                     <svg class="icon-on"><use href="#i-mic"></use></svg>
                     <svg class="icon-off"><use href="#i-mic-off"></use></svg>
+                    <span class="vc-label">Mic</span>
                   </button>
                   <button id="vCamButton" class="v-control" type="button" aria-label="Toggle camera" aria-pressed="false">
                     <svg class="icon-on"><use href="#i-cam"></use></svg>
                     <svg class="icon-off"><use href="#i-cam-off"></use></svg>
+                    <span class="vc-label">Camera</span>
                   </button>
                   <button id="vScreenButton" class="v-control" type="button" aria-label="Share your screen" aria-pressed="false">
                     <svg class="icon-on"><use href="#i-screen"></use></svg>
                     <svg class="icon-off"><use href="#i-screen-off"></use></svg>
+                    <span class="vc-label">Share</span>
                   </button>
                   <button id="vLeaveButton" class="v-control leave" type="button" aria-label="Disconnect">
                     <svg><use href="#i-phone"></use></svg>
+                    <span class="vc-label">Leave</span>
                   </button>
                 </footer>
               </div>

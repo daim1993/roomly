@@ -79,12 +79,15 @@ const ui = {
   voiceJoinButton: $('#voiceJoinButton'),
   voiceJoinMicButton: $('#voiceJoinMicButton'),
   voiceStage: $('#voiceStage'),
+  callTimer: $('#callTimer'),
   voiceGrid: $('#voiceGrid'),
   screenStage: $('#screenStage'),
   screenVideo: $('#screenVideo'),
   screenLabel: $('#screenLabel'),
   screenSelfNote: $('#screenSelfNote'),
   screenSelfStop: $('#screenSelfStop'),
+  stageAvatar: $('#stageAvatar'),
+  unpinButton: $('#unpinButton'),
   sharePill: $('#sharePill'),
   vMicButton: $('#vMicButton'),
   vCamButton: $('#vCamButton'),
@@ -128,6 +131,7 @@ const state = {
   pendingAttachments: [],
   mentionTokens: new Map(), // display name -> userId (composer session)
   focusedScreen: null,
+  pinned: null, // 'self' | connId — Meet-style participant pin
   pendingInvite: null,
   booted: false
 };
@@ -153,6 +157,7 @@ const voice = new VoiceManager({
   },
   onEnded: () => {
     state.focusedScreen = null;
+    state.pinned = null;
     renderVoiceView();
     renderVoiceDock();
     renderSidebar();
@@ -1189,6 +1194,20 @@ function renderTyping() {
 
 setInterval(renderTyping, 1200);
 
+setInterval(() => {
+  if (!voice.active || !voice.joinedAt) {
+    ui.callTimer.textContent = '00:00';
+    return;
+  }
+  const seconds = Math.floor((Date.now() - voice.joinedAt) / 1000);
+  const hh = Math.floor(seconds / 3600);
+  const mm = Math.floor((seconds % 3600) / 60);
+  const ss = seconds % 60;
+  ui.callTimer.textContent = hh
+    ? `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
+    : `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+}, 1000);
+
 // ============================================================== composer
 
 let lastTypingSentAt = 0;
@@ -1496,7 +1515,12 @@ function renderVoiceTiles(channelKey, participants) {
     seen.add(key);
     let tile = voiceTileEls.get(key);
     if (!tile) {
-      tile = el('div', { class: 'voice-tile', dataset: { tileKey: key } },
+      tile = el('div', {
+        class: 'voice-tile',
+        dataset: { tileKey: key },
+        title: 'Click to pin',
+        onclick: () => togglePin(key)
+      },
         el('video', { autoplay: true, playsinline: true, muted: true }),
         avatarEl(user),
         el('span', { class: 'voice-tile-conn', text: 'Connecting' }),
@@ -1507,6 +1531,8 @@ function renderVoiceTiles(channelKey, participants) {
     }
     tile.classList.toggle('is-local', isLocal);
     tile.classList.toggle('is-connected', connected);
+    tile.classList.toggle('is-pinned', state.pinned === key);
+    tile.title = state.pinned === key ? 'Click to unpin' : 'Click to pin';
 
     const video = tile.querySelector('video');
     const cameraOn = Boolean(media && media.video && stream && stream.getVideoTracks().some((track) => track.readyState === 'live'));
@@ -1562,7 +1588,60 @@ function renderVoiceControls() {
   ui.vScreenButton.setAttribute('aria-pressed', String(media.screen));
 }
 
+function togglePin(key) {
+  state.pinned = state.pinned === key ? null : key;
+  renderVoiceView();
+}
+
 function renderScreenStage(participants) {
+  // A pinned participant takes the stage over everything else (Meet-style).
+  let pinned = state.pinned;
+  if (pinned && pinned !== 'self' && !participants.some((candidate) => candidate.connId === pinned)) {
+    pinned = state.pinned = null;
+  }
+  if (pinned) {
+    const isSelf = pinned === 'self';
+    const participant = isSelf ? null : participants.find((candidate) => candidate.connId === pinned);
+    const user = isSelf ? state.me : getUser(participant.userId);
+    const media = isSelf ? voice.media() : participant.media || {};
+    const stream = isSelf ? voice.localStream : (voice.peers.get(pinned) || {}).cameraStream;
+    const camOn = Boolean(media.video && stream && stream.getVideoTracks().some((track) => track.readyState === 'live'));
+
+    ui.screenStage.hidden = false;
+    ui.voiceStage.classList.add('has-screen');
+    ui.screenSelfNote.hidden = true;
+    ui.unpinButton.hidden = false;
+    ui.screenLabel.hidden = false;
+    ui.screenLabel.replaceChildren(icon('i-cam'), ` ${user.name}${isSelf ? ' (you)' : ''} — pinned`);
+
+    if (camOn) {
+      ui.stageAvatar.hidden = true;
+      ui.screenVideo.hidden = false;
+      if (ui.screenVideo.srcObject !== stream) {
+        ui.screenVideo.srcObject = stream;
+      }
+      ui.screenVideo.muted = true;
+      ui.screenVideo.classList.toggle('mirror', isSelf);
+    } else {
+      ui.screenVideo.hidden = true;
+      ui.screenVideo.srcObject = null;
+      ui.stageAvatar.hidden = false;
+      ui.stageAvatar.replaceChildren(
+        avatarEl(user, 'stage-avatar-face'),
+        el('strong', { text: user.name + (isSelf ? ' (you)' : '') }),
+        el('small', { text: 'Camera is off' })
+      );
+    }
+    return;
+  }
+  ui.unpinButton.hidden = true;
+  ui.stageAvatar.hidden = true;
+  ui.screenVideo.hidden = false;
+  ui.screenVideo.classList.remove('mirror');
+  renderShareStage(participants);
+}
+
+function renderShareStage(participants) {
   // Choose which screen share to feature.
   const sharers = [];
   if (voice.screenStream) {
@@ -2820,6 +2899,7 @@ function wireUi() {
   ui.dockScreenButton.addEventListener('click', toggleScreenShare);
   ui.screenSelfStop.addEventListener('click', stopShare);
   ui.sharePill.addEventListener('click', stopShare);
+  ui.unpinButton.addEventListener('click', () => togglePin(state.pinned));
   ui.vLeaveButton.addEventListener('click', () => {
     voice.leave();
     beep('leave');
