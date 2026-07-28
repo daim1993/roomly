@@ -3509,3 +3509,40 @@ body {
   .home-stats { gap: 18px; }
   .stat-cell:not(:first-child) { padding-left: 18px; }
 }
+
+/* ============================================== POLISH: PREJOIN BOX + HOVERS */
+
+/* The join card: real padding, nothing pokes outside, buttons sit inset */
+.voice-prejoin-card {
+  padding: 30px 24px 24px;
+  overflow: hidden;
+  gap: 8px;
+}
+.voice-prejoin-icon { animation: none; }
+.voice-prejoin-buttons { margin-top: 16px; }
+.voice-prejoin-buttons > * {
+  height: 96px;
+  border-radius: 22px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+/* Every button animates on hover: springy lift + press */
+button {
+  transition:
+    transform 0.16s cubic-bezier(0.34, 1.45, 0.64, 1),
+    filter 0.16s ease,
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.2s ease,
+    opacity 0.16s ease !important;
+}
+button:hover { transform: translateY(-1.5px); }
+button:active { transform: translateY(0) scale(0.96); }
+button:disabled:hover,
+button:disabled:active { transform: none; filter: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  button:hover, button:active { transform: none; }
+}
