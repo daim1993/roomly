@@ -103,14 +103,14 @@ svg {
   flex: none;
   user-select: none;
 }
-.avatar.c1 { background: linear-gradient(135deg, #4a80f0, #2e6be8); color: #fff; }
-.avatar.c2 { background: linear-gradient(135deg, #e0a32e, #c8860d); }
-.avatar.c3 { background: linear-gradient(135deg, #e7e3db, #d6d1c8); }
-.avatar.c4 { background: linear-gradient(135deg, #7aa5ff, #4a80f0); color: #fff; }
-.avatar.c5 { background: linear-gradient(135deg, #f0603f, #e8442e); color: #fff; }
-.avatar.c6 { background: linear-gradient(135deg, #f6b8dc, #f2a9d4); }
-.avatar.c7 { background: linear-gradient(135deg, #2a8a58, #1e6e46); color: #fff; }
-.avatar.c8 { background: linear-gradient(135deg, #f2efe9, #d6d1c8); }
+.avatar.c1 { background: #2e6be8; color: #fff; }
+.avatar.c2 { background: #c8860d; }
+.avatar.c3 { background: #d6d1c8; }
+.avatar.c4 { background: #4a80f0; color: #fff; }
+.avatar.c5 { background: #e8442e; color: #fff; }
+.avatar.c6 { background: #f2a9d4; }
+.avatar.c7 { background: #1e6e46; color: #fff; }
+.avatar.c8 { background: #e7e3db; }
 
 .primary-button {
   display: inline-flex;
@@ -122,7 +122,7 @@ svg {
   padding: 11px 20px;
   font-weight: 650;
   color: #ffffff;
-  background: linear-gradient(135deg, var(--accent-bright), var(--accent));
+  background: var(--accent);
   box-shadow: 0 10px 24px rgba(46, 107, 232, 0.28);
   transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
 }
@@ -230,7 +230,7 @@ svg {
   border-radius: 10px;
   background: var(--lime);
   color: #0f0e0c;
-  box-shadow: 0 6px 18px rgba(214, 209, 200, 0.35);
+  box-shadow: none;
 }
 .brand-mark svg { width: 20px; height: 20px; }
 
@@ -428,9 +428,8 @@ svg {
 .rail-item:hover { border-radius: 13px; background: var(--bg-4); color: var(--text); }
 .rail-item.is-active {
   border-radius: 13px;
-  background: linear-gradient(135deg, var(--accent-bright), var(--accent));
+  background: var(--accent);
   color: #fff;
-  box-shadow: 0 6px 20px rgba(46, 107, 232, 0.45);
 }
 .rail-item.rail-home svg { width: 24px; height: 24px; }
 .rail-item.rail-add { background: transparent; border: 1px dashed var(--line-strong); color: var(--text-dim); }
@@ -1559,7 +1558,7 @@ svg {
   justify-content: center;
   width: 72px; height: 72px;
   border-radius: 24px;
-  background: linear-gradient(135deg, var(--accent-bright), var(--accent));
+  background: var(--accent);
   color: #1b0c05;
   box-shadow: 0 16px 44px rgba(46, 107, 232, 0.35);
 }
@@ -2167,12 +2166,12 @@ svg {
    Card system inspired by stacked-class UIs: saturated cards, black pill
    chips, chunky radii, bold names. Channels and servers are cards now. */
 
-.card-c0 { --card-bg: linear-gradient(135deg, #4a80f0, #2e6be8); --card-fg: #ffffff; --card-dim: rgba(255, 255, 255, 0.78); }
-.card-c1 { --card-bg: linear-gradient(135deg, #f0603f, #e8442e); --card-fg: #1f0b06; --card-dim: rgba(31, 11, 6, 0.65); }
-.card-c2 { --card-bg: linear-gradient(135deg, #f6b8dc, #f2a9d4); --card-fg: #24101b; --card-dim: rgba(36, 16, 27, 0.62); }
-.card-c3 { --card-bg: linear-gradient(135deg, #e0a32e, #c8860d); --card-fg: #1d1404; --card-dim: rgba(29, 20, 4, 0.65); }
-.card-c4 { --card-bg: linear-gradient(135deg, #27835a, #1e6e46); --card-fg: #f0f7ef; --card-dim: rgba(240, 247, 239, 0.75); }
-.card-c5 { --card-bg: linear-gradient(135deg, #e7e3db, #d6d1c8); --card-fg: #17130e; --card-dim: rgba(23, 19, 14, 0.65); }
+.card-c0 { --card-bg: #2e6be8; --card-fg: #ffffff; --card-dim: rgba(255, 255, 255, 0.78); }
+.card-c1 { --card-bg: #e8442e; --card-fg: #1f0b06; --card-dim: rgba(31, 11, 6, 0.65); }
+.card-c2 { --card-bg: #f2a9d4; --card-fg: #24101b; --card-dim: rgba(36, 16, 27, 0.62); }
+.card-c3 { --card-bg: #c8860d; --card-fg: #1d1404; --card-dim: rgba(29, 20, 4, 0.65); }
+.card-c4 { --card-bg: #1e6e46; --card-fg: #f0f7ef; --card-dim: rgba(240, 247, 239, 0.75); }
+.card-c5 { --card-bg: #d6d1c8; --card-fg: #17130e; --card-dim: rgba(23, 19, 14, 0.65); }
 
 .pill-chip {
   display: inline-flex;
@@ -2574,9 +2573,7 @@ svg {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  background:
-    radial-gradient(420px 260px at 50% 38%, rgba(46, 107, 232, 0.14), transparent 70%),
-    #12110f;
+  background: #141312;
 }
 .stage-avatar .stage-avatar-face {
   width: 110px;
@@ -2593,11 +2590,11 @@ svg {
 
 /* Lime primary actions, ink text */
 .primary-button {
-  background: linear-gradient(135deg, #e7e3db, var(--lime));
+  background: var(--lime);
   color: #141210;
   border-radius: 15px;
   font-weight: 800;
-  box-shadow: 0 10px 26px rgba(214, 209, 200, 0.22);
+  box-shadow: none;
 }
 .primary-button:hover { filter: brightness(1.04) saturate(1.05); }
 .ghost-button { border-radius: 14px; }
@@ -2678,7 +2675,7 @@ svg {
   text-transform: uppercase;
 }
 #vMicButton {
-  background: linear-gradient(135deg, #2f9161, #1e6e46);
+  background: #1e6e46;
   color: #fff;
 }
 #vMicButton:hover { filter: brightness(1.07); }
@@ -2688,7 +2685,7 @@ svg {
   color: var(--danger);
 }
 #vCamButton {
-  background: linear-gradient(135deg, #4a80f0, #2e6be8);
+  background: #2e6be8;
   color: #fff;
 }
 #vCamButton:hover { filter: brightness(1.05); }
@@ -2735,11 +2732,11 @@ svg {
 }
 .voice-prejoin-buttons svg { width: 24px; height: 24px; }
 #voiceJoinMicButton {
-  background: linear-gradient(135deg, #2f9161, #1e6e46);
+  background: #1e6e46;
   border: 0;
   color: #fff;
 }
-#voiceJoinMicButton:hover { filter: brightness(1.07); background: linear-gradient(135deg, #2f9161, #1e6e46); }
+#voiceJoinMicButton:hover { filter: brightness(1.07); background: #1e6e46; }
 
 @media (max-width: 820px) {
   .v-control { height: 60px; max-width: none; border-radius: 17px; }
@@ -2873,7 +2870,7 @@ svg {
   border: 0;
   border-radius: 10px;
   padding: 7px 14px;
-  background: linear-gradient(135deg, #e7e3db, var(--lime));
+  background: var(--lime);
   color: #141210;
   font-weight: 800;
   font-size: 13px;
@@ -3071,8 +3068,8 @@ svg {
     padding: 10px;
     border-radius: 22px;
     border-bottom: 0;
-    background: linear-gradient(160deg, #3a76f0, #2e6be8 55%, #1e4fc0);
-    box-shadow: 0 14px 32px rgba(46, 107, 232, 0.26);
+    background: #2e6be8;
+    box-shadow: none;
   }
   .server-rail .rail-item { background: rgba(255, 255, 255, 0.16); color: #e8efff; }
   .server-rail .rail-item:hover { background: rgba(255, 255, 255, 0.28); color: #fff; }
@@ -3165,4 +3162,294 @@ svg {
     border-radius: 22px;
     border: 1px solid var(--line);
   }
+}
+
+/* ============================================== BRUTAL BENTO LAYER
+   Neo-brutalist pass over the whole shell: flat Hobbes-color blocks tiled on
+   a pure-black desk with chunky gaps, huge uppercase display type, outline
+   pills, hard offset hover shadows, scattered ✳ ✦ ● accents, and a splash
+   screen. Icons are solid/filled (see index.html symbol defs). */
+
+/* Flat black desk */
+body { background: #080706; }
+
+@media (min-width: 821px) {
+  /* Bento: sidebar and main are separate rounded blocks with a black gap */
+  .app-view {
+    margin: 10px;
+    height: calc(100vh - 20px);
+    column-gap: 10px;
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+    box-shadow: none;
+    background: transparent;
+  }
+  .sidebar {
+    border-right: 0;
+    border-radius: 26px;
+    overflow: hidden;
+    background: var(--bg-1);
+  }
+  .main-pane { border-radius: 26px; overflow: hidden; }
+  .member-panel { border-width: 2px; }
+}
+
+/* Big flat display type — no gradient fills, all caps */
+#homeGreeting, .auth-copy h1 {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+  color: var(--text);
+  animation: none;
+  text-transform: uppercase;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 0.98;
+}
+.auth-copy h1 { font-size: clamp(38px, 5vw, 62px); }
+#homeGreeting { font-size: clamp(32px, 4.2vw, 50px); }
+.hc-name { text-transform: uppercase; }
+.main-header-text strong,
+.primary-button,
+.ghost-button,
+.rec-send,
+.auth-tabs button,
+.mnav-item { text-transform: uppercase; letter-spacing: 0.03em; }
+.primary-button, .ghost-button, .rec-send { font-weight: 900; }
+
+/* Flat chunky buttons: hard offset shadow instead of glow */
+.primary-button { border-radius: 14px; }
+.primary-button:hover {
+  filter: none;
+  transform: translate(-1px, -2px);
+  box-shadow: 3px 4px 0 rgba(244, 242, 238, 0.28);
+}
+.primary-button:active { transform: translate(0, 0); box-shadow: none; }
+.ghost-button { border-width: 2px; background: transparent; }
+.ghost-button:hover { background: rgba(255, 255, 255, 0.06); }
+
+/* Outline pill tabs — active goes beige like the reference chips */
+.auth-tabs { border-width: 2px; background: transparent; border-radius: 16px; }
+.auth-tabs button { font-weight: 800; }
+.auth-tabs button.is-active { background: var(--lime); color: #12100d; }
+.auth-form input { border-width: 2px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); }
+.auth-card {
+  border-width: 2px;
+  border-radius: 28px;
+  background: #171614;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.auth-view { background: #080706; }
+.orb { display: none; }
+.privacy-pill { border-width: 2px; font-weight: 700; }
+.privacy-pill::after {
+  content: "";
+  width: 32px;
+  height: 13px;
+  margin-left: 6px;
+  background: repeating-linear-gradient(90deg, currentColor 0 2px, transparent 2px 4.5px);
+  opacity: 0.75;
+}
+
+/* Cards: flat, hard hover offset, thick active ring */
+.home-card-item { border-radius: 24px; }
+.home-card-item:hover {
+  transform: translate(-2px, -3px) rotate(-0.4deg);
+  box-shadow: 4px 5px 0 rgba(244, 242, 238, 0.24);
+  filter: none;
+}
+.sidebar .channel-item { border-radius: 18px; }
+.sidebar .channel-item:hover {
+  transform: translate(-1px, -2px);
+  box-shadow: 3px 4px 0 rgba(244, 242, 238, 0.22);
+  filter: none;
+}
+.sidebar .channel-item.is-active {
+  box-shadow: 0 0 0 2.5px #f4f2ee;
+}
+
+/* Voice room blocks */
+.voice-tile { border: 2px solid rgba(255, 255, 255, 0.12); border-radius: 20px; }
+.screen-stage { border: 2px solid rgba(255, 255, 255, 0.1); }
+.v-control { border-radius: 16px; }
+.vc-label { font-weight: 900; }
+#vScreenButton { border: 2px solid var(--line-strong); }
+.voice-prejoin-card { position: relative; border: 2px solid var(--line-strong); border-radius: 26px; }
+.composer { border: 2px solid var(--line-strong); }
+.modal-card { border: 2px solid var(--line-strong); border-radius: 26px; }
+
+/* Ambient aurora dialed down so the blocks stay flat */
+.fx-aurora { opacity: 0.38; }
+
+/* ------------------------------------------- scattered shape accents ✳ */
+
+.auth-view::before {
+  content: "✳";
+  position: absolute;
+  top: 6%;
+  right: 7%;
+  z-index: 0;
+  font-size: clamp(70px, 10vw, 128px);
+  color: #f2a9d4;
+  transform: rotate(14deg);
+  opacity: 0.9;
+  pointer-events: none;
+}
+.auth-view::after {
+  content: "✦";
+  position: absolute;
+  bottom: 8%;
+  left: 4%;
+  z-index: 0;
+  font-size: clamp(44px, 6vw, 78px);
+  color: #c8860d;
+  transform: rotate(-11deg);
+  opacity: 0.85;
+  pointer-events: none;
+}
+.home-shell::before {
+  content: "✳";
+  position: absolute;
+  top: 0;
+  right: 1%;
+  font-size: 88px;
+  color: var(--lime);
+  transform: rotate(18deg);
+  opacity: 0.5;
+  pointer-events: none;
+}
+.home-shell::after {
+  content: "●";
+  position: absolute;
+  bottom: 4%;
+  left: -1%;
+  font-size: 54px;
+  color: var(--accent);
+  opacity: 0.45;
+  pointer-events: none;
+}
+.chat-intro { position: relative; }
+.chat-intro::after {
+  content: "✳";
+  position: absolute;
+  top: 12px;
+  right: 20px;
+  font-size: 42px;
+  color: var(--accent);
+  transform: rotate(12deg);
+  opacity: 0.4;
+  pointer-events: none;
+}
+.voice-prejoin-card::after {
+  content: "✦";
+  position: absolute;
+  top: -16px;
+  right: -12px;
+  font-size: 50px;
+  color: #f2a9d4;
+  transform: rotate(15deg);
+  pointer-events: none;
+}
+
+/* Brutal mobile nav: beige active tab */
+@media (max-width: 820px) {
+  .mobile-nav { border-width: 2px; border-radius: 22px; background: rgba(10, 9, 8, 0.96); }
+  .mnav-item { font-weight: 900; }
+  .mnav-item.is-active { background: var(--lime); color: #12100d; }
+}
+
+/* --------------------------------------------------------- splash screen */
+
+.splash-view {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #080706;
+  transition: opacity 0.45s ease;
+}
+.splash-view.is-done { opacity: 0; pointer-events: none; }
+.splash-card {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 42px 56px 36px;
+  border-radius: 30px;
+  background: var(--lime);
+  color: #12100d;
+  animation: pop-in 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+.splash-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 66px;
+  height: 66px;
+  border-radius: 20px;
+  background: #12100d;
+  color: var(--lime);
+}
+.splash-logo svg { width: 38px; height: 38px; }
+.splash-card h1 {
+  margin: 0;
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+.splash-card p {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+.splash-bar {
+  width: 150px;
+  height: 8px;
+  margin-top: 8px;
+  border-radius: 99px;
+  background: rgba(18, 16, 13, 0.18);
+  overflow: hidden;
+}
+.splash-bar i {
+  display: block;
+  height: 100%;
+  width: 40%;
+  border-radius: 99px;
+  background: #12100d;
+  animation: splash-slide 0.9s ease-in-out infinite alternate;
+}
+@keyframes splash-slide {
+  from { transform: translateX(-18%); }
+  to { transform: translateX(172%); }
+}
+.splash-shape {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+  font-weight: 900;
+  line-height: 1;
+}
+.splash-shape.ss1 { top: 12%; left: 11%; font-size: 92px; color: #f2a9d4; transform: rotate(-14deg); }
+.splash-shape.ss2 { bottom: 13%; right: 11%; font-size: 70px; color: #2e6be8; transform: rotate(10deg); }
+.splash-shape.ss3 { top: 17%; right: 19%; font-size: 32px; color: #e8442e; }
+.splash-shape.ss4 { bottom: 19%; left: 17%; font-size: 46px; color: #1e6e46; transform: rotate(24deg); }
+
+@media (max-width: 600px) {
+  .splash-card { padding: 34px 40px 30px; border-radius: 26px; }
+  .splash-card h1 { font-size: 34px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .splash-bar i { animation: none; }
+  .splash-card { animation: none; }
 }

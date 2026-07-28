@@ -2609,6 +2609,7 @@ function applyReady(snapshot) {
   voice.resync(snapshot.connId);
 
   ui.connBanner.hidden = true;
+  hideSplash();
   ui.authView.hidden = true;
   ui.appView.hidden = false;
 
@@ -2866,7 +2867,25 @@ function wireSocketEvents() {
 
 // ============================================================== auth flow
 
+let splashHidden = false;
+function hideSplash() {
+  if (splashHidden) {
+    return;
+  }
+  splashHidden = true;
+  const splash = document.getElementById('splashView');
+  if (!splash) {
+    return;
+  }
+  // Give the splash a short beat so it reads as an intro, not a flash.
+  setTimeout(() => {
+    splash.classList.add('is-done');
+    setTimeout(() => splash.remove(), 620);
+  }, 320);
+}
+
 function showAuth() {
+  hideSplash();
   ui.authView.hidden = false;
   ui.appView.hidden = true;
   ui.authInviteNote.hidden = !state.pendingInvite;
