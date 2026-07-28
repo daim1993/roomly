@@ -255,6 +255,7 @@ function applyMobileLayout() {
   ui.appViewEl.classList.toggle('m-nav', mobile && state.mobilePane === 'nav');
   ui.appViewEl.classList.toggle('m-content', mobile && state.mobilePane === 'content');
   ui.backButton.hidden = !(mobile && state.mobilePane === 'content');
+  ui.appViewEl.classList.toggle('has-dock', mobile && voice.active);
 
   // The voice dock must survive whichever pane is hidden: on phones it lives
   // on <body> pinned above the nav bar; on desktop it sits in the sidebar.
@@ -518,6 +519,7 @@ function renderVoiceDock() {
   const connected = voice.active && voice.channelKey;
   ui.voiceDock.hidden = !connected;
   ui.sharePill.hidden = !(connected && voice.screenStream);
+  applyMobileLayout();
   if (!connected) {
     return;
   }
@@ -1599,6 +1601,7 @@ function renderScreenStage(participants) {
   if (pinned && pinned !== 'self' && !participants.some((candidate) => candidate.connId === pinned)) {
     pinned = state.pinned = null;
   }
+  ui.voiceStage.classList.toggle('pin-max', Boolean(pinned));
   if (pinned) {
     const isSelf = pinned === 'self';
     const participant = isSelf ? null : participants.find((candidate) => candidate.connId === pinned);
@@ -2930,7 +2933,11 @@ function wireUi() {
       } else if (!ui.modalRoot.hidden) {
         closeModal();
       } else {
+        const popoverWasOpen = !ui.popover.hidden || !ui.emojiPopup.hidden || mentionState.open;
         closePopovers();
+        if (!popoverWasOpen && state.pinned) {
+          togglePin(state.pinned);
+        }
       }
     }
   });
