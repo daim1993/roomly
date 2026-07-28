@@ -44,6 +44,13 @@ const ui = {
   meName: $('#meName'),
   meTag: $('#meTag'),
   settingsButton: $('#settingsButton'),
+  appViewEl: $('#appView'),
+  backButton: $('#backButton'),
+  mobileNav: $('#mobileNav'),
+  mnavHome: $('#mnavHome'),
+  mnavChats: $('#mnavChats'),
+  mnavMe: $('#mnavMe'),
+  mnavBadge: $('#mnavBadge'),
   channelIcon: $('#channelIcon'),
   channelTitle: $('#channelTitle'),
   channelTopic: $('#channelTopic'),
@@ -114,6 +121,7 @@ const state = {
   messages: new Map(), // channelKey -> {list, hasMore, loaded}
   typing: new Map(), // channelKey -> Map<userId, expiresAt>
   view: { kind: 'home' },
+  mobilePane: 'home', // 'home' | 'nav' | 'content' — phone-size stack navigation
   memberPanelOpen: true,
   replyTo: null,
   editingId: null,
@@ -229,6 +237,39 @@ function serverHasUnread(server) {
   );
 }
 
+const mobileQuery = window.matchMedia('(max-width: 820px)');
+
+function isMobile() {
+  return mobileQuery.matches;
+}
+
+function applyMobileLayout() {
+  const mobile = isMobile();
+  ui.appViewEl.classList.toggle('is-mobile', mobile);
+  ui.appViewEl.classList.toggle('m-home', mobile && state.mobilePane === 'home');
+  ui.appViewEl.classList.toggle('m-nav', mobile && state.mobilePane === 'nav');
+  ui.appViewEl.classList.toggle('m-content', mobile && state.mobilePane === 'content');
+  ui.backButton.hidden = !(mobile && state.mobilePane === 'content');
+
+  // The voice dock must survive whichever pane is hidden: on phones it lives
+  // on <body> pinned above the nav bar; on desktop it sits in the sidebar.
+  const userBar = document.querySelector('.user-bar');
+  if (mobile && ui.voiceDock.parentElement !== document.body) {
+    document.body.append(ui.voiceDock);
+  } else if (!mobile && ui.voiceDock.parentElement === document.body && userBar) {
+    userBar.parentElement.insertBefore(ui.voiceDock, userBar);
+  }
+
+  ui.mnavHome.classList.toggle('is-active', state.mobilePane === 'home');
+  ui.mnavChats.classList.toggle('is-active', state.mobilePane !== 'home');
+  let mentionTotal = 0;
+  for (const count of Object.values(state.mentions)) {
+    mentionTotal += count;
+  }
+  ui.mnavBadge.hidden = !mentionTotal;
+  ui.mnavBadge.textContent = mentionTotal > 99 ? '99+' : String(mentionTotal);
+}
+
 const CARD_COLORS = 6;
 
 function colorClassAt(index) {
@@ -237,12 +278,16 @@ function colorClassAt(index) {
 
 function formatRemaining(expiresAt) {
   const ms = Math.max(0, expiresAt - Date.now());
-  const hours = Math.floor(ms / 3_600_000);
-  const minutes = Math.max(1, Math.round((ms % 3_600_000) / 60_000));
-  if (hours >= 1) {
-    return `${hours}h ${minutes}m`;
+  let hours = Math.floor(ms / 3_600_000);
+  let minutes = Math.round((ms % 3_600_000) / 60_000);
+  if (minutes === 60) {
+    hours += 1;
+    minutes = 0;
   }
-  return `${minutes} min`;
+  if (hours >= 1) {
+    return minutes ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+  return `${Math.max(1, minutes)} min`;
 }
 
 setInterval(() => {
@@ -258,6 +303,7 @@ function updateTitle() {
     mentionTotal += count;
   }
   document.title = mentionTotal ? `(${mentionTotal}) Roomly` : 'Roomly';
+  applyMobileLayout();
 }
 
 // ============================================================== rendering
@@ -269,6 +315,7 @@ function renderAll() {
   renderVoiceDock();
   renderMainView();
   updateTitle();
+  applyMobileLayout();
 }
 
 function renderRail() {
@@ -650,6 +697,7 @@ function renderMembers() {
 
 function setView(view) {
   state.view = view;
+  state.mobilePane = view.kind === 'home' ? 'home' : 'content';
   closePopovers();
   cancelReply();
   stopEditing();
@@ -667,13 +715,24 @@ function openServer(serverId) {
     return;
   }
   const firstText = server.channels.find((channel) => channel.type === 'text');
+  const firstVoice = server.channels.find((channel) => channel.type === 'voice');
+
+  if (isMobile()) {
+    // Phone flow: land on the channel-list screen, don't auto-open a chat
+    // (that would mark it read before the person ever saw it).
+    const channel = firstText || firstVoice;
+    if (channel) {
+      setView({ kind: channel.type === 'text' ? 'text' : 'voice', serverId, channelId: channel.id });
+      state.mobilePane = 'nav';
+      applyMobileLayout();
+    }
+    return;
+  }
+
   if (firstText) {
     openTextChannel(serverId, firstText.id);
-  } else {
-    const firstVoice = server.channels.find((channel) => channel.type === 'voice');
-    if (firstVoice) {
-      openVoiceChannel(serverId, firstVoice.id);
-    }
+  } else if (firstVoice) {
+    openVoiceChannel(serverId, firstVoice.id);
   }
 }
 
@@ -2574,6 +2633,26 @@ function wireAuthForms() {
 
 function wireUi() {
   ui.homeButton.addEventListener('click', openHome);
+  ui.backButton.addEventListener('click', () => {
+    state.mobilePane = 'nav';
+    applyMobileLayout();
+  });
+  ui.mnavHome.addEventListener('click', openHome);
+  ui.mnavChats.addEventListener('click', () => {
+    state.mobilePane = 'nav';
+    applyMobileLayout();
+  });
+  ui.mnavMe.addEventListener('click', openUserSettings);
+  mobileQuery.addEventListener('change', () => {
+    if (isMobile()) {
+      state.memberPanelOpen = false; // full-screen overlay: opt-in on phones
+    }
+    if (state.me) {
+      renderAll();
+    } else {
+      applyMobileLayout();
+    }
+  });
   ui.addServerButton.addEventListener('click', () => openAddServerModal());
   ui.homeCreateServer.addEventListener('click', () => openAddServerModal('create'));
   ui.homeJoinServer.addEventListener('click', () => openAddServerModal('join'));
@@ -2802,6 +2881,7 @@ function wireUi() {
 // ============================================================== boot
 
 async function boot() {
+  state.memberPanelOpen = !isMobile();
   const inviteMatch = location.pathname.match(/^\/invite\/([a-z0-9]+)/i);
   if (inviteMatch) {
     state.pendingInvite = inviteMatch[1].toLowerCase();

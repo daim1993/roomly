@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#0b0d13">
     <meta name="description" content="Roomly — servers, channels, voice rooms and screen sharing in your browser">
     <title>Roomly — Your place to talk</title>
@@ -299,6 +299,9 @@
       <!-- Main -->
       <main class="main-pane">
         <header id="mainHeader" class="main-header">
+          <button id="backButton" class="icon-button back-button" type="button" aria-label="Back" hidden>
+            <svg><use href="#i-chevron"></use></svg>
+          </button>
           <span id="channelIcon" class="channel-icon"><svg><use href="#i-hash"></use></svg></span>
           <div class="main-header-text">
             <strong id="channelTitle">Welcome</strong>
@@ -417,6 +420,22 @@
           </aside>
         </div>
       </main>
+
+      <nav id="mobileNav" class="mobile-nav" aria-label="Main navigation">
+        <button id="mnavHome" class="mnav-item is-active" type="button">
+          <svg><use href="#i-home"></use></svg>
+          <span>Home</span>
+        </button>
+        <button id="mnavChats" class="mnav-item" type="button">
+          <svg><use href="#i-hash"></use></svg>
+          <span>Chats</span>
+          <b id="mnavBadge" class="mnav-badge" hidden></b>
+        </button>
+        <button id="mnavMe" class="mnav-item" type="button">
+          <svg><use href="#i-settings"></use></svg>
+          <span>You</span>
+        </button>
+      </nav>
     </div>
 
     <!-- ============================ OVERLAYS ============================ -->
