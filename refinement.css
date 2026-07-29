@@ -1170,6 +1170,286 @@ body .activity-row, body .activity-tab, body .assistant-actions button {
 }
 
 /* ================================================================
+   Control alignment system
+   One alignment contract for text, icons, pills, compact controls,
+   navigation, and destination tiles.
+   ================================================================ */
+
+button {
+  font-family: var(--body);
+  font-variant-numeric: tabular-nums;
+}
+
+button > svg,
+button > span > svg {
+  display: block;
+  flex: 0 0 auto;
+  margin: 0;
+  vertical-align: middle;
+}
+
+.primary-button,
+.ghost-button,
+.load-older,
+.rec-send,
+.stop-share-button,
+.sidebar-action,
+.side-link,
+.assistant-actions button,
+.modal-buttons button,
+.popover button,
+.voice-prejoin-buttons > button,
+.main-header .share-button,
+.side-add-sub {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.primary-button > svg,
+.ghost-button > svg,
+.load-older > svg,
+.rec-send > svg,
+.stop-share-button > svg,
+.sidebar-action > svg,
+.side-link > svg,
+.assistant-actions button > svg,
+.modal-buttons button > svg,
+.voice-prejoin-buttons > button > svg,
+.main-header .share-button > svg {
+  width: 18px;
+  height: 18px;
+}
+
+.primary-button,
+.ghost-button,
+.rec-send,
+.stop-share-button,
+.modal-buttons button,
+.voice-prejoin-buttons > button {
+  min-height: 48px;
+  padding: 0 20px;
+}
+
+.icon-button,
+.dock-control,
+.v-control,
+.hf-plus,
+.composer-side,
+.composer-send {
+  display: inline-grid !important;
+  place-items: center !important;
+  align-content: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  line-height: 0 !important;
+  text-align: center;
+}
+
+.icon-button > svg,
+.dock-control > svg,
+.v-control > svg,
+.hf-plus > svg,
+.composer-side > svg,
+.composer-send > svg {
+  grid-area: 1 / 1;
+  width: 18px;
+  height: 18px;
+  margin: 0 !important;
+}
+
+.icon-button.tiny > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.v-control .vc-label {
+  grid-area: 2 / 1;
+  margin: 4px 0 0;
+  line-height: 1;
+}
+
+.auth-tabs {
+  align-items: stretch;
+}
+
+.auth-tabs button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  line-height: 1;
+  text-align: center;
+}
+
+.mnav-item,
+.mnav-item.is-active {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px;
+  padding: 6px 8px;
+  text-align: center;
+  line-height: 1;
+}
+
+.mnav-item > svg {
+  width: 20px;
+  height: 20px;
+}
+
+.mnav-item > span {
+  display: block;
+  margin: 0;
+  line-height: 1;
+}
+
+.side-add-main {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.side-add-sub {
+  width: 100%;
+  min-height: 34px;
+  padding-inline: 12px;
+}
+
+.server-rail .rail-item,
+.server-rail .rail-item.is-active {
+  display: grid !important;
+  grid-template-rows: auto 1fr;
+  align-content: stretch !important;
+  align-items: start;
+  justify-items: start !important;
+  gap: 12px;
+  text-align: left;
+}
+
+.server-rail .rail-item .rail-ic {
+  align-self: start;
+  display: inline-grid;
+  place-items: center;
+}
+
+.server-rail .rail-item .rail-ic > svg {
+  width: 18px;
+  height: 18px;
+}
+
+.server-rail .rail-item .rail-name {
+  align-self: end;
+  margin: 0;
+  line-height: 1.05;
+}
+
+.sidebar .channel-item,
+.sidebar .channel-item.is-active {
+  display: grid !important;
+  grid-template-rows: auto 1fr auto;
+  align-content: stretch !important;
+  align-items: start;
+  justify-items: start !important;
+  gap: 8px;
+  text-align: left;
+}
+
+.sidebar .channel-item .ch-icon {
+  display: inline-grid;
+  place-items: center;
+  align-self: start;
+}
+
+.sidebar .channel-item .ch-icon > svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sidebar .channel-item .channel-name {
+  align-self: end;
+  margin: 0;
+  line-height: 1.08;
+}
+
+.sidebar .channel-item .ch-pills {
+  width: 100%;
+  align-items: center;
+}
+
+.home-focus .primary-button,
+.home-buttons .primary-button,
+.home-buttons .ghost-button {
+  align-self: center;
+}
+
+.home-card-item .hc-top {
+  width: 100%;
+  align-items: center;
+}
+
+.home-card-item .hc-icon,
+.home-card-item .hc-arrow,
+.side-add-plus,
+.activity-row-icon,
+.voice-prejoin-icon {
+  display: inline-grid;
+  place-items: center;
+  line-height: 0;
+}
+
+.home-card-item .hc-icon > svg,
+.home-card-item .hc-arrow > svg,
+.side-add-plus > svg,
+.activity-row-icon > svg,
+.voice-prejoin-icon > svg {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.pill-chip,
+.reaction-chip,
+.guest-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+@media (max-width: 820px) {
+  .primary-button,
+  .ghost-button,
+  .rec-send,
+  .stop-share-button,
+  .modal-buttons button,
+  .voice-prejoin-buttons > button {
+    min-height: 46px;
+    padding-inline: 18px;
+  }
+
+  .mnav-item,
+  .mnav-item.is-active {
+    padding: 5px 6px;
+  }
+
+  .mnav-item > svg {
+    width: 19px;
+    height: 19px;
+  }
+}
+
+/* ================================================================
    Roomly communication canvas
    A destination-led UX: one focused canvas, an on-demand Spaces drawer,
    bold functional color, and no persistent Discord-style hierarchy.
@@ -3646,5 +3926,40 @@ body button:not(.icon-button):not(.home-card-item):not(.rail-item):not(.channel-
     height: 40px !important;
     min-height: 40px !important;
     flex-basis: 40px !important;
+  }
+}
+
+/* Hidden state and fixed icon geometry always outrank alignment helpers. */
+body [hidden] {
+  display: none !important;
+}
+
+html body [hidden][hidden] {
+  display: none !important;
+}
+
+.icon-button,
+.space-menu-button,
+.dock-control,
+.v-control,
+.hf-plus,
+.composer-side,
+.composer-send {
+  flex-shrink: 0 !important;
+}
+
+.space-menu-button {
+  width: 48px !important;
+  min-width: 48px !important;
+  height: 48px !important;
+  min-height: 48px !important;
+}
+
+@media (max-width: 820px) {
+  .space-menu-button {
+    width: 46px !important;
+    min-width: 46px !important;
+    height: 46px !important;
+    min-height: 46px !important;
   }
 }
