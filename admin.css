@@ -45,3 +45,235 @@ button.good { color: var(--lime); border-color: rgba(198,255,51,.4); }
 #gate a { color: var(--violet2); }
 .dbchip { font-size: 11px; font-weight: 800; letter-spacing: .05em; padding: 4px 10px; border-radius: 99px; background: rgba(198,255,51,.12); color: var(--lime); border: 1px solid rgba(198,255,51,.3); }
 @media (max-width: 720px) { .hide-sm { display: none; } input[type=search] { width: 100%; } }
+
+/* Tactical telemetry console */
+:root {
+  --bg: #0a0a0a;
+  --panel: #0d0d0d;
+  --panel2: #141414;
+  --line: #555555;
+  --text: #eaeaea;
+  --dim: #9a9a9a;
+  --violet: #e61919;
+  --violet2: #ff2a2a;
+  --lime: #e61919;
+  --danger: #ff2a2a;
+  --amber: #eaeaea;
+  --ok: #4af626;
+  font-family: "Cascadia Mono", "IBM Plex Mono", "JetBrains Mono", Consolas, monospace;
+}
+
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+}
+
+body {
+  background-color: #0a0a0a;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  background: repeating-linear-gradient(0deg, transparent 0 2px, rgba(0, 0, 0, 0.22) 2px 4px);
+}
+
+.wrap {
+  max-width: 1280px;
+  padding-top: 18px;
+}
+
+header {
+  min-height: 58px;
+  margin-bottom: 18px;
+  padding: 10px 12px;
+  border: 1px solid #555555;
+  background: #0a0a0a;
+}
+
+.brand {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.brand::before {
+  content: "[ SYS-ADMIN ]";
+  color: #e61919;
+  font-size: 10px;
+}
+
+.mark {
+  border: 1px solid #e61919;
+  background: #e61919;
+  color: #eaeaea;
+}
+
+.sub,
+.dbchip,
+a.back,
+.card span,
+th,
+.tag,
+button {
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+a.back {
+  color: #eaeaea;
+}
+
+a.back:hover {
+  color: #ff2a2a;
+}
+
+h1 {
+  max-width: 900px;
+  font-family: Inter, "Arial Black", "Segoe UI", sans-serif;
+  font-size: clamp(44px, 7vw, 94px);
+  font-weight: 900;
+  line-height: 0.86;
+  letter-spacing: -0.05em;
+  text-transform: uppercase;
+}
+
+.cards {
+  gap: 1px;
+  border: 1px solid #555555;
+  background: #555555;
+}
+
+.card {
+  border: 0;
+  border-top: 3px solid #e61919;
+  background: #0d0d0d;
+  box-shadow: none;
+}
+
+.card b,
+.card.lime b,
+.card.violet b {
+  color: #eaeaea;
+  font-family: Inter, "Arial Black", "Segoe UI", sans-serif;
+  font-size: 34px;
+}
+
+section {
+  border: 1px solid #555555;
+  background: #0d0d0d;
+  box-shadow: none;
+}
+
+.sec-head {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #555555;
+}
+
+.sec-head h2::before {
+  content: "[ ";
+  color: #e61919;
+}
+
+.sec-head h2::after {
+  content: " ]";
+  color: #e61919;
+}
+
+input[type="search"] {
+  border: 1px solid #555555;
+  background: #0a0a0a;
+}
+
+input[type="search"]:focus {
+  border-color: #ff2a2a;
+  box-shadow: inset 3px 0 0 #e61919;
+  outline: none;
+}
+
+th,
+td {
+  border-color: #303030;
+}
+
+th {
+  color: #eaeaea;
+  background: #141414;
+}
+
+tbody tr:hover {
+  background: #141414;
+}
+
+.tag {
+  border: 1px solid #555555;
+  background: #0a0a0a !important;
+  color: #eaeaea !important;
+}
+
+.tag.online {
+  border-color: #4af626;
+  color: #4af626 !important;
+}
+
+button {
+  border: 1px solid #555555;
+  background: #0a0a0a;
+  color: #eaeaea;
+}
+
+button:hover {
+  border-color: #e61919;
+  background: #1a0c0c;
+}
+
+button.danger,
+button.good {
+  border-color: #e61919;
+  color: #eaeaea;
+}
+
+button.danger:hover,
+button.good:hover {
+  background: #e61919;
+}
+
+.dbchip {
+  border: 1px solid #555555;
+  background: #0a0a0a;
+  color: #eaeaea;
+}
+
+#toast {
+  border: 1px solid #e61919;
+  background: #0a0a0a;
+  color: #eaeaea;
+  box-shadow: 4px 4px 0 #e61919;
+}
+
+@media (max-width: 720px) {
+  .wrap {
+    padding: 10px 10px 50px;
+  }
+
+  header {
+    align-items: flex-start;
+  }
+
+  h1 {
+    font-size: clamp(42px, 15vw, 70px);
+  }
+
+  section {
+    padding: 12px;
+  }
+}
