@@ -33,6 +33,35 @@ export class VoiceManager {
     this.audioContext = null;
     this.analysers = new Map(); // key ('self' | connId) -> {analyser, data, speaking}
     this.speakTimer = null;
+
+    // Network handoffs (wifi -> mobile, VPN on/off) get an immediate fresh
+    // candidate hunt instead of waiting for the 12s watchdog.
+    this.netKickTimer = null;
+    const onNetChange = () => {
+      clearTimeout(this.netKickTimer);
+      this.netKickTimer = setTimeout(() => this.onNetworkChange(), 1000);
+    };
+    try {
+      window.addEventListener('online', onNetChange);
+      if (navigator.connection && navigator.connection.addEventListener) {
+        navigator.connection.addEventListener('change', onNetChange);
+      }
+    } catch {}
+  }
+
+  /** The path under every call just changed: give each live link a fresh
+      ICE round right away (restarts here don't spend the failure budget). */
+  onNetworkChange() {
+    if (!this.active) {
+      return;
+    }
+    for (const peer of this.peers.values()) {
+      if (peer.failed || peer.pc.signalingState === 'closed') {
+        continue;
+      }
+      peer.iceRestarts = Math.max(0, peer.iceRestarts - 1); // free kick
+      this.kickIce(peer, 'network-change');
+    }
   }
 
   media() {
@@ -242,6 +271,10 @@ export class VoiceManager {
         this.camEnabled = false; // no camera is fine; join with voice only
       }
     }
+
+    // Fresh short-lived TURN credentials before any RTCPeerConnection exists
+    // (snapshot creds could be hours old in a long-lived tab).
+    await this.refreshIce();
 
     const ack = await this.socket.request('voice-join', {
       channelKey,
@@ -461,9 +494,11 @@ export class VoiceManager {
     }
   }
 
-  createPeer(participant) {
+  createPeer(participant, { relayOnly = false, rebuilds = 0 } = {}) {
     const pc = new RTCPeerConnection({
       iceServers: this.iceServers,
+      // Direct paths first; 'relay' only as the last-resort rebuild policy.
+      iceTransportPolicy: relayOnly ? 'relay' : 'all',
       // Fast setup: one bundled transport, muxed RTCP, and candidates
       // pre-gathered before the offer even exists.
       bundlePolicy: 'max-bundle',
@@ -489,7 +524,15 @@ export class VoiceManager {
       screenStream: null,
       screenSenders: new Set(),
       meta: null,
-      connected: false
+      connected: false,
+      // Recovery state machine (PLAN: 3 ICE restarts -> rebuild -> relay-only
+      // rebuild -> actionable error). bornAt guards against rebuild echo loops.
+      relayOnly,
+      rebuilds,
+      failed: false,
+      connState: relayOnly ? 'relay' : 'connecting',
+      bornAt: Date.now(),
+      stableTimer: null
     };
     this.peers.set(peer.connId, peer);
 
@@ -549,6 +592,14 @@ export class VoiceManager {
       peer.connected = pc.connectionState === 'connected';
       if (pc.connectionState === 'connected') {
         peer.iceRestarts = 0; // healthy again — reset the watchdog budget
+        peer.connState = 'connected';
+        clearTimeout(peer.stableTimer);
+        // 30s stable link earns back the rebuild budget (network handoffs
+        // later in the call get the full recovery ladder again).
+        peer.stableTimer = setTimeout(() => { peer.rebuilds = 0; }, 30_000);
+        this.logSelectedPair(peer);
+      } else {
+        clearTimeout(peer.stableTimer);
       }
       if (pc.connectionState === 'failed') {
         this.kickIce(peer, 'failed');
@@ -619,22 +670,123 @@ export class VoiceManager {
     }
   }
 
-  /** Force a fresh round of candidate gathering on a stuck link. Bounded so
-      a genuinely unreachable peer doesn't renegotiate forever. */
+  /** Recovery ladder for a stuck link. Bounded so a genuinely unreachable
+      peer doesn't renegotiate forever:
+        3 ICE restarts -> rebuild the RTCPeerConnection (fresh transport)
+        3 more        -> rebuild once more with iceTransportPolicy 'relay'
+        3 more        -> give up: surface an actionable error + retry button */
   kickIce(peer, reason) {
-    if (!peer || peer.iceRestarts >= 3 || peer.pc.signalingState === 'closed') {
+    if (!peer || peer.failed || peer.pc.signalingState === 'closed' ||
+        this.peers.get(peer.connId) !== peer) {
+      return;
+    }
+    if (peer.iceRestarts >= 3) {
+      if ((peer.rebuilds || 0) >= 2) {
+        peer.failed = true;
+        peer.connected = false;
+        peer.connState = 'failed';
+        clearInterval(peer.watchdog);
+        try {
+          console.warn(`[rtc] link ${peer.connId}: gave up after ${peer.rebuilds} rebuilds (${reason})`);
+        } catch {}
+        this.onUpdate();
+        return;
+      }
+      this.rebuildPeer(peer);
       return;
     }
     peer.iceRestarts += 1;
+    peer.connState = peer.relayOnly ? 'relay' : 'reconnecting';
     try {
       if (typeof peer.pc.restartIce === 'function') {
         peer.pc.restartIce();
       }
     } catch {}
+    this.onUpdate();
+  }
+
+  /** Tear down a link and negotiate from scratch. First rebuild keeps
+      policy 'all'; the second goes relay-only so unusable direct candidates
+      stop crowding out the TURN path (VPNs, symmetric NAT, UDP-blocked).
+      Local tracks live in this.localStream, so createPeer re-adds them. */
+  rebuildPeer(peer, { relayOnly = null, rebuilds = null } = {}) {
+    if (!this.active || this.peers.get(peer.connId) !== peer) {
+      return;
+    }
+    const participant = { connId: peer.connId, userId: peer.userId };
+    const nextRebuilds = rebuilds === null ? (peer.rebuilds || 0) + 1 : rebuilds;
+    const wantRelay = relayOnly === null ? nextRebuilds >= 2 : relayOnly;
+    try {
+      console.info(`[rtc] rebuilding link ${peer.connId}${wantRelay ? ' (relay-only)' : ''}`);
+    } catch {}
+    // Tell the other side to rebuild too — both ends need a fresh transport.
+    this.socket.push('signal', { target: peer.connId, payload: { rebuild: true } });
+    const meta = peer.meta;
+    this.destroyPeer(peer, true);
+    const fresh = this.createPeer(participant, { relayOnly: wantRelay, rebuilds: nextRebuilds });
+    fresh.meta = meta;
+    this.onUpdate();
+  }
+
+  /** User-initiated retry (no page reload): fresh ICE credentials, fresh
+      peer connection, full recovery budget. */
+  async retryPeer(connId) {
+    const peer = this.peers.get(connId);
+    if (!peer || !this.active) {
+      return;
+    }
+    await this.refreshIce();
+    this.rebuildPeer(peer, { relayOnly: false, rebuilds: 0 });
+  }
+
+  /** Pull current ICE servers (fresh short-lived TURN credentials) from the
+      server. Best-effort: keeps the cached list when the request fails. */
+  async refreshIce() {
+    try {
+      const ack = await this.socket.request('ice', {}, 4000);
+      if (ack && Array.isArray(ack.iceServers) && ack.iceServers.length) {
+        this.iceServers = ack.iceServers;
+      }
+    } catch {}
+  }
+
+  /** Observability: record which path actually carries media (host / srflx /
+      relay over udp / tcp / tls) so stuck environments leave evidence. */
+  async logSelectedPair(peer) {
+    try {
+      const stats = await peer.pc.getStats();
+      let pair = null;
+      for (const report of stats.values()) {
+        if (report.type === 'transport' && report.selectedCandidatePairId) {
+          pair = stats.get(report.selectedCandidatePairId) || null;
+        }
+      }
+      if (!pair) {
+        for (const report of stats.values()) {
+          if (report.type === 'candidate-pair' && report.state === 'succeeded' &&
+              (report.selected || report.nominated)) {
+            pair = report;
+            break;
+          }
+        }
+      }
+      if (!pair) {
+        return;
+      }
+      const local = stats.get(pair.localCandidateId) || {};
+      const remote = stats.get(pair.remoteCandidateId) || {};
+      peer.path = {
+        local: local.candidateType || '?',
+        remote: remote.candidateType || '?',
+        protocol: local.relayProtocol || local.protocol || '?'
+      };
+      console.info(`[rtc] ${peer.connId} connected via ${peer.path.local}/${peer.path.protocol} -> ${peer.path.remote}${peer.relayOnly ? ' (relay-only)' : ''}`);
+    } catch {}
   }
 
   destroyPeer(peer, removeFromMap) {
     clearInterval(peer.watchdog);
+    clearTimeout(peer.stableTimer);
     try {
       peer.pc.close();
     } catch {}
@@ -669,6 +821,22 @@ export class VoiceManager {
     let peer = this.peers.get(from);
     if (!peer) {
       peer = this.createPeer({ connId: from, userId: fromUserId });
+    }
+
+    if (payload.rebuild) {
+      // Other side is tearing its transport down. Match it — unless ours is
+      // younger than 2s (we already rebuilt; this is the echo of our own).
+      if (Date.now() - peer.bornAt > 2000) {
+        const meta = peer.meta;
+        const rebuilds = peer.rebuilds || 0;
+        this.destroyPeer(peer, true);
+        peer = this.createPeer({ connId: from, userId: fromUserId }, { rebuilds });
+        peer.meta = meta;
+        this.onUpdate();
+      }
+      if (!payload.description && !payload.candidate) {
+        return;
+      }
     }
 
     if (payload.meta) {

@@ -1877,7 +1877,38 @@ function renderVoiceView() {
 function renderVoiceTiles(channelKey, participants) {
   const seen = new Set();
 
-  const ensureTile = (key, user, media, stream, isLocal, connected) => {
+  // The badge mirrors the real recovery ladder instead of a frozen
+  // "Connecting": restarts, relay fallback, and a retry that needs no reload.
+  const connBadge = (tile, peer) => {
+    const badge = tile.querySelector('.voice-tile-conn');
+    if (!badge) {
+      return;
+    }
+    const failed = Boolean(peer && peer.failed);
+    tile.classList.toggle('is-failed', failed);
+    let label = 'Connecting';
+    if (peer && peer.connState === 'reconnecting') {
+      label = 'Reconnecting';
+    } else if (peer && peer.connState === 'relay') {
+      label = 'Trying secure relay';
+    } else if (failed) {
+      label = 'Connection failed';
+    }
+    const parts = [document.createTextNode(label)];
+    if (failed) {
+      parts.push(el('button', {
+        class: 'voice-tile-retry',
+        text: 'Retry',
+        onclick: (event) => {
+          event.stopPropagation();
+          voice.retryPeer(peer.connId);
+        }
+      }));
+    }
+    badge.replaceChildren(...parts);
+  };
+
+  const ensureTile = (key, user, media, stream, isLocal, connected, peer) => {
     seen.add(key);
     let tile = voiceTileEls.get(key);
     if (!tile) {
@@ -1897,6 +1928,7 @@ function renderVoiceTiles(channelKey, participants) {
     }
     tile.classList.toggle('is-local', isLocal);
     tile.classList.toggle('is-connected', connected);
+    connBadge(tile, isLocal ? null : peer);
     tile.classList.toggle('is-pinned', state.pinned === key);
     tile.title = state.pinned === key ? 'Click to unpin' : 'Click to pin';
 
@@ -1918,7 +1950,7 @@ function renderVoiceTiles(channelKey, participants) {
   };
 
   // Local tile first.
-  ensureTile('self', state.me, voice.media(), voice.localStream, true, true);
+  ensureTile('self', state.me, voice.media(), voice.localStream, true, true, null);
 
   for (const participant of participants) {
     if (participant.connId === state.connId) {
@@ -1931,7 +1963,8 @@ function renderVoiceTiles(channelKey, participants) {
       participant.media,
       peer ? peer.cameraStream : null,
       false,
-      Boolean(peer && peer.connected)
+      Boolean(peer && peer.connected),
+      peer
     );
   }
 
