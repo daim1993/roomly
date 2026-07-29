@@ -529,7 +529,7 @@ function renderSidebar() {
     ui.channelPane.prepend(el('div', { class: 'temp-banner', title: 'Guest-hosted spaces close automatically.' },
       icon('i-refresh'),
       el('span', {},
-        el('strong', { text: 'Temporary space' }),
+        el('strong', { text: 'Guest space' }),
         el('small', { text: `Closes in ${formatRemaining(server.expiresAt)}` })
       )
     ));
