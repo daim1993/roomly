@@ -16,11 +16,11 @@ function motionOk() {
 }
 
 const PALETTE = [
-  [199, 169, 107],  // aged brass
-  [220, 193, 135],  // warm highlight
-  [158, 128, 72],   // deep brass
-  [135, 127, 105],  // warm stone
-  [190, 181, 159]   // soft parchment
+  [56, 103, 255],   // electric blue
+  [76, 121, 255],   // blue highlight
+  [139, 92, 255],   // assistant purple
+  [0, 217, 255],    // live cyan
+  [34, 40, 58]      // deep-space neutral
 ];
 
 // ------------------------------------------------------------------- aurora

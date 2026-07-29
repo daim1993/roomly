@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#0c0e0d">
+    <meta name="theme-color" content="#080a12">
     <meta name="description" content="Roomly — servers, channels, voice rooms and screen sharing in your browser">
     <title>Roomly — Your place to talk</title>
     <link rel="stylesheet" href="/styles.css">
@@ -181,7 +181,15 @@
       <symbol id="i-expand" viewBox="0 0 24 24">
         <path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5" fill="none" stroke="currentColor" stroke-width="2.5"/>
       </symbol>
+      <symbol id="i-activity" viewBox="0 0 24 24">
+        <path d="M3 12h4l2.2-6 4.2 12 2.4-6H21" fill="none" stroke="currentColor" stroke-width="2.3"/>
+      </symbol>
+      <symbol id="i-spark" viewBox="0 0 24 24">
+        <path d="M12 2.8 14 9l6.2 2-6.2 2-2 6.2-2-6.2-6.2-2L10 9l2-6.2Z" fill="currentColor" stroke="none"/>
+      </symbol>
     </svg>
+
+    <a class="skip-link" href="#workspace">Skip to workspace</a>
 
     <!-- ============================ SPLASH ============================ -->
     <div id="splashView" class="splash-view" aria-hidden="true">
@@ -284,6 +292,9 @@
             <button id="settingsButton" class="icon-button" type="button" aria-label="User settings">
               <svg><use href="#i-settings"></use></svg>
             </button>
+            <button id="sidebarCollapseButton" class="icon-button sidebar-collapse-button" type="button" aria-label="Collapse navigation" aria-pressed="false">
+              <svg><use href="#i-chevron"></use></svg>
+            </button>
           </span>
         </header>
 
@@ -380,7 +391,7 @@
       </aside>
 
       <!-- Main -->
-      <main class="main-pane">
+      <main id="workspace" class="main-pane">
         <header id="mainHeader" class="main-header">
           <button id="backButton" class="icon-button back-button" type="button" aria-label="Back" hidden>
             <svg><use href="#i-chevron"></use></svg>
@@ -410,7 +421,10 @@
             <button id="copyLinkButton" class="ghost-button small" type="button" hidden>
               <svg><use href="#i-link"></use></svg> Link
             </button>
-            <button id="toggleMembersButton" class="icon-button" type="button" aria-label="Toggle member list" aria-pressed="true" hidden>
+            <button id="activityToggleButton" class="icon-button" type="button" aria-label="Toggle activity panel" aria-pressed="true">
+              <svg><use href="#i-activity"></use></svg>
+            </button>
+            <button id="toggleMembersButton" class="icon-button" type="button" aria-label="Show members" aria-pressed="false" hidden>
               <svg><use href="#i-users"></use></svg>
             </button>
           </div>
@@ -526,6 +540,16 @@
                 <p class="home-eyebrow"><span class="home-logo-mini"><svg><use href="#i-logo"></use></svg></span> roomly</p>
                 <h2 id="homeGreeting">How's it going today?</h2>
                 <p class="home-sub" id="homeSub">Jump back into your spaces, or start something new.</p>
+                <section class="home-focus" aria-label="Start a conversation">
+                  <span class="home-focus-copy">
+                    <small>Instant room</small>
+                    <strong>Talk now, without setup</strong>
+                    <span>Open your first available voice room or create a space when you need one.</span>
+                  </span>
+                  <button id="homeStartCall" class="primary-button home-start-call" type="button">
+                    <svg><use href="#i-cam"></use></svg> Start a room
+                  </button>
+                </section>
                 <div id="homeStats" class="home-stats" hidden></div>
                 <div id="homeServerCards" class="home-cards"></div>
                 <div class="home-buttons">
@@ -536,9 +560,37 @@
             </section>
           </div>
 
-          <!-- Members -->
-          <aside id="memberPanel" class="member-panel" hidden aria-label="Members">
-            <div id="memberList"></div>
+          <!-- Contextual activity, members, and assistant -->
+          <aside id="memberPanel" class="member-panel activity-panel" hidden aria-label="Activity panel">
+            <header class="activity-panel-head">
+              <span>
+                <small>Context</small>
+                <strong id="activityPanelTitle">Activity</strong>
+              </span>
+              <button id="activityCloseButton" class="icon-button tiny" type="button" aria-label="Close activity panel">
+                <svg><use href="#i-x"></use></svg>
+              </button>
+            </header>
+            <nav class="activity-tabs" aria-label="Activity panel sections">
+              <button class="activity-tab is-active" type="button" data-activity-tab="activity">Activity</button>
+              <button class="activity-tab" type="button" data-activity-tab="members">People</button>
+              <button class="activity-tab ai-tab" type="button" data-activity-tab="assistant"><svg><use href="#i-spark"></use></svg> Assist</button>
+            </nav>
+            <div id="activityOverview" class="activity-overview"></div>
+            <div id="memberList" class="activity-member-list" hidden></div>
+            <section id="assistantPanel" class="assistant-panel" hidden>
+              <div class="assistant-core"><svg><use href="#i-spark"></use></svg></div>
+              <small>Roomly Assist</small>
+              <h2>Catch up without scrolling</h2>
+              <p>Build an on-device overview from messages already loaded in this conversation.</p>
+              <div class="assistant-actions">
+                <button id="assistantSummaryButton" type="button">Summarize recent</button>
+                <button id="assistantDecisionsButton" type="button">Find decisions</button>
+              </div>
+              <div id="assistantOutput" class="assistant-output" aria-live="polite">
+                Choose an action to analyze the current conversation.
+              </div>
+            </section>
           </aside>
         </div>
       </main>

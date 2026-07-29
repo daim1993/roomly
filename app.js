@@ -23,6 +23,7 @@ const ui = {
   railServers: $('#railServers'),
   homeButton: $('#homeButton'),
   addServerButton: $('#addServerButton'),
+  sidebarCollapseButton: $('#sidebarCollapseButton'),
   sidebarTitle: $('#sidebarTitle'),
   serverMenuButton: $('#serverMenuButton'),
   dmPane: $('#dmPane'),
@@ -67,6 +68,7 @@ const ui = {
   voiceChatButton: $('#voiceChatButton'),
   invitePeopleButton: $('#invitePeopleButton'),
   toggleMembersButton: $('#toggleMembersButton'),
+  activityToggleButton: $('#activityToggleButton'),
   chatView: $('#chatView'),
   messageScroll: $('#messageScroll'),
   messageList: $('#messageList'),
@@ -116,8 +118,16 @@ const ui = {
   homeServerCards: $('#homeServerCards'),
   homeCreateServer: $('#homeCreateServer'),
   homeJoinServer: $('#homeJoinServer'),
+  homeStartCall: $('#homeStartCall'),
   memberPanel: $('#memberPanel'),
   memberList: $('#memberList'),
+  activityCloseButton: $('#activityCloseButton'),
+  activityPanelTitle: $('#activityPanelTitle'),
+  activityOverview: $('#activityOverview'),
+  assistantPanel: $('#assistantPanel'),
+  assistantSummaryButton: $('#assistantSummaryButton'),
+  assistantDecisionsButton: $('#assistantDecisionsButton'),
+  assistantOutput: $('#assistantOutput'),
   modalRoot: $('#modalRoot'),
   modalCard: $('#modalCard'),
   popover: $('#popover'),
@@ -143,7 +153,9 @@ const state = {
   view: { kind: 'home' },
   mobilePane: 'home', // 'home' | 'nav' | 'content' — phone-size stack navigation
   voiceChatOpen: false,
-  memberPanelOpen: true,
+  activityPanelOpen: true,
+  activityTab: 'activity',
+  sidebarCollapsed: false,
   replyTo: null,
   editingId: null,
   pendingAttachments: [],
@@ -271,6 +283,8 @@ function isMobile() {
 function applyMobileLayout() {
   const mobile = isMobile();
   ui.appViewEl.classList.toggle('is-mobile', mobile);
+  ui.appViewEl.classList.toggle('sidebar-collapsed', !mobile && state.sidebarCollapsed);
+  ui.appViewEl.classList.toggle('activity-open', !mobile && state.activityPanelOpen);
   ui.appViewEl.classList.toggle('m-home', mobile && state.mobilePane === 'home');
   ui.appViewEl.classList.toggle('m-nav', mobile && state.mobilePane === 'nav');
   ui.appViewEl.classList.toggle('m-content', mobile && state.mobilePane === 'content');
@@ -294,6 +308,9 @@ function applyMobileLayout() {
   }
   ui.mnavBadge.hidden = !mentionTotal;
   ui.mnavBadge.textContent = mentionTotal > 99 ? '99+' : String(mentionTotal);
+  ui.sidebarCollapseButton.setAttribute('aria-pressed', String(state.sidebarCollapsed));
+  ui.sidebarCollapseButton.setAttribute('aria-label', state.sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation');
+  ui.activityToggleButton.setAttribute('aria-pressed', String(!mobile && state.activityPanelOpen));
 }
 
 const CARD_COLORS = 6;
@@ -755,8 +772,14 @@ function renderMainView() {
   const inServer = view.kind === 'text' || view.kind === 'voice';
   const server = inServer ? getServer(view.serverId) : null;
   ui.invitePeopleButton.hidden = !server;
-  ui.toggleMembersButton.hidden = !(view.kind === 'text' && server);
-  ui.memberPanel.hidden = !(view.kind === 'text' && server && state.memberPanelOpen);
+  ui.toggleMembersButton.hidden = !server;
+  ui.memberPanel.hidden = isMobile() || !state.activityPanelOpen;
+  ui.appViewEl.classList.toggle('activity-open', !isMobile() && state.activityPanelOpen);
+  ui.activityToggleButton.setAttribute('aria-pressed', String(!isMobile() && state.activityPanelOpen));
+  ui.toggleMembersButton.setAttribute(
+    'aria-pressed',
+    String(Boolean(server && state.activityPanelOpen && state.activityTab === 'members'))
+  );
 
   if (view.kind === 'home') {
     ui.channelIcon.replaceChildren(icon('i-logo'));
@@ -791,7 +814,7 @@ function renderMainView() {
       : `Message #${ui.channelTitle.textContent}`;
   }
 
-  renderMembers();
+  renderActivityPanel();
   renderVoiceView();
 }
 
@@ -813,8 +836,208 @@ function renderHeaderFaces(server) {
   }
 }
 
+function currentLoadedMessages() {
+  const channelKey = activeChannelKey();
+  const bucket = channelKey ? state.messages.get(channelKey) : null;
+  return bucket ? bucket.list.filter((message) => !message.deleted) : [];
+}
+
+function activitySection(title, ...children) {
+  return el('section', { class: 'activity-section' },
+    el('p', { class: 'activity-section-label', text: title }),
+    ...children
+  );
+}
+
+function renderActivityOverview() {
+  ui.activityOverview.replaceChildren();
+  const view = state.view;
+  const server = currentServerForView();
+
+  if (view.kind === 'home') {
+    const liveRooms = [];
+    for (const candidate of state.servers.values()) {
+      for (const channel of candidate.channels.filter((item) => item.type === 'voice')) {
+        const people = state.voiceStates.get(keyForText(candidate.id, channel.id)) || [];
+        if (people.length) {
+          liveRooms.push({ server: candidate, channel, people });
+        }
+      }
+    }
+
+    const liveList = el('div', { class: 'activity-list' });
+    for (const item of liveRooms.slice(0, 4)) {
+      liveList.append(el('button', {
+        class: 'activity-row',
+        type: 'button',
+        onclick: () => openVoiceChannel(item.server.id, item.channel.id)
+      },
+        el('span', { class: 'activity-row-icon is-live' }, icon('i-speaker')),
+        el('span', { class: 'activity-row-copy' },
+          el('strong', { text: item.channel.name }),
+          el('small', { text: `${item.server.name} · ${item.people.length} live` })
+        ),
+        icon('i-chevron')
+      ));
+    }
+    if (!liveRooms.length) {
+      liveList.append(el('div', { class: 'activity-empty' },
+        el('span', { class: 'activity-row-icon' }, icon('i-signal')),
+        el('strong', { text: 'No live rooms' }),
+        el('p', { text: 'When someone joins voice, the room appears here.' })
+      ));
+    }
+    ui.activityOverview.append(activitySection('Live now', liveList));
+
+    const recentDms = [...state.dms.values()]
+      .sort((a, b) => (b.lastAt || 0) - (a.lastAt || 0))
+      .slice(0, 4);
+    const dmList = el('div', { class: 'activity-list' });
+    for (const dm of recentDms) {
+      const user = getUser(dm.otherUserId);
+      dmList.append(el('button', {
+        class: 'activity-row',
+        type: 'button',
+        onclick: () => openDm(dm.id)
+      },
+        avatarEl(user),
+        el('span', { class: 'activity-row-copy' },
+          el('strong', { text: user.name }),
+          el('small', { text: state.online.has(user.id) ? 'Online' : 'Recent conversation' })
+        ),
+        icon('i-chevron')
+      ));
+    }
+    if (!recentDms.length) {
+      dmList.append(el('p', { class: 'activity-note', text: 'Your recent conversations will collect here.' }));
+    }
+    ui.activityOverview.append(activitySection('Recent', dmList));
+    return;
+  }
+
+  if (server) {
+    const onlineCount = server.members.filter((member) => state.online.has(member.userId)).length;
+    const voiceCount = server.channels
+      .filter((channel) => channel.type === 'voice')
+      .reduce((sum, channel) => sum + (state.voiceStates.get(keyForText(server.id, channel.id)) || []).length, 0);
+    ui.activityOverview.append(activitySection('Space',
+      el('div', { class: 'activity-metrics' },
+        el('span', {}, el('b', { text: String(onlineCount) }), el('small', { text: 'online' })),
+        el('span', {}, el('b', { text: String(voiceCount) }), el('small', { text: 'in voice' }))
+      ),
+      el('p', { class: 'activity-note', text: `${server.name} has ${server.members.length} member${server.members.length === 1 ? '' : 's'} across ${server.channels.length} channels.` })
+    ));
+
+    const voiceList = el('div', { class: 'activity-list' });
+    for (const channel of server.channels.filter((item) => item.type === 'voice').slice(0, 5)) {
+      const people = state.voiceStates.get(keyForText(server.id, channel.id)) || [];
+      voiceList.append(el('button', {
+        class: `activity-row${view.kind === 'voice' && view.channelId === channel.id ? ' is-current' : ''}`,
+        type: 'button',
+        onclick: () => openVoiceChannel(server.id, channel.id)
+      },
+        el('span', { class: `activity-row-icon${people.length ? ' is-live' : ''}` }, icon('i-speaker')),
+        el('span', { class: 'activity-row-copy' },
+          el('strong', { text: channel.name }),
+          el('small', { text: people.length ? `${people.length} live now` : 'Room is open' })
+        )
+      ));
+    }
+    ui.activityOverview.append(activitySection('Voice rooms', voiceList));
+    return;
+  }
+
+  if (view.kind === 'dm') {
+    const dm = state.dms.get(view.dmId);
+    const user = dm ? getUser(dm.otherUserId) : null;
+    if (user) {
+      ui.activityOverview.append(activitySection('Conversation',
+        el('div', { class: 'activity-profile' },
+          avatarEl(user),
+          el('span', {},
+            el('strong', { text: user.name }),
+            el('small', { text: state.online.has(user.id) ? 'Online now' : 'Offline' })
+          )
+        ),
+        el('p', { class: 'activity-note', text: 'Shared messages, files, reactions, and voice notes stay in this private conversation.' })
+      ));
+    }
+  }
+}
+
+function renderAssistantAnalysis(mode) {
+  const messages = currentLoadedMessages().slice(-16);
+  if (!messages.length) {
+    ui.assistantOutput.replaceChildren(
+      el('strong', { text: 'Nothing to analyze yet' }),
+      el('p', { text: 'Open a conversation with loaded messages, then try again.' })
+    );
+    return;
+  }
+
+  const selected = mode === 'decisions'
+    ? messages.filter((message) => /\b(decid(?:e|ed|ing)|agreed?|will|next step|action|need to|todo)\b/i.test(message.content || ''))
+    : messages.slice(-6);
+  const heading = mode === 'decisions' ? 'Decisions and next steps' : 'Recent conversation';
+  const note = mode === 'decisions'
+    ? `${selected.length} likely decision${selected.length === 1 ? '' : 's'} found locally.`
+    : `A concise view of the last ${selected.length} message${selected.length === 1 ? '' : 's'}.`;
+
+  const list = el('ul', { class: 'assistant-result-list' });
+  for (const message of selected) {
+    list.append(el('li', {},
+      el('strong', { text: getUser(message.authorId).name }),
+      el('span', { text: contentPreview(message, state.users) || 'Shared an attachment' })
+    ));
+  }
+  if (!selected.length) {
+    list.append(el('li', {}, el('span', { text: 'No explicit decisions appeared in the loaded messages.' })));
+  }
+  ui.assistantOutput.replaceChildren(
+    el('strong', { text: heading }),
+    el('p', { text: note }),
+    list
+  );
+}
+
+function renderActivityPanel() {
+  const server = currentServerForView();
+  const tabs = document.querySelectorAll('[data-activity-tab]');
+  if (state.activityTab === 'members' && !server) {
+    state.activityTab = 'activity';
+  }
+  for (const tab of tabs) {
+    const key = tab.dataset.activityTab;
+    tab.hidden = key === 'members' && !server;
+    tab.classList.toggle('is-active', key === state.activityTab);
+    tab.setAttribute('aria-pressed', String(key === state.activityTab));
+  }
+
+  ui.activityOverview.hidden = state.activityTab !== 'activity';
+  ui.memberList.hidden = state.activityTab !== 'members';
+  ui.assistantPanel.hidden = state.activityTab !== 'assistant';
+  ui.activityPanelTitle.textContent = state.activityTab === 'members'
+    ? 'People'
+    : state.activityTab === 'assistant'
+      ? 'Assist'
+      : 'Activity';
+
+  if (state.activityTab === 'activity') {
+    renderActivityOverview();
+  } else if (state.activityTab === 'members') {
+    renderMembers();
+  } else {
+    const hasMessages = currentLoadedMessages().length > 0;
+    ui.assistantSummaryButton.disabled = !hasMessages;
+    ui.assistantDecisionsButton.disabled = !hasMessages;
+    if (!hasMessages) {
+      ui.assistantOutput.textContent = 'Open a conversation with loaded messages to use the on-device overview.';
+    }
+  }
+}
+
 function renderMembers() {
-  if (ui.memberPanel.hidden) {
+  if (ui.memberPanel.hidden || ui.memberList.hidden) {
     return;
   }
   const server = getServer(state.view.serverId);
@@ -884,6 +1107,26 @@ function setView(view) {
 
 function openHome() {
   setView({ kind: 'home' });
+}
+
+function startAvailableRoom() {
+  let fallback = null;
+  for (const server of state.servers.values()) {
+    for (const channel of server.channels.filter((candidate) => candidate.type === 'voice')) {
+      const target = { serverId: server.id, channelId: channel.id };
+      const people = state.voiceStates.get(keyForText(server.id, channel.id)) || [];
+      if (people.length) {
+        openVoiceChannel(target.serverId, target.channelId);
+        return;
+      }
+      fallback ||= target;
+    }
+  }
+  if (fallback) {
+    openVoiceChannel(fallback.serverId, fallback.channelId);
+    return;
+  }
+  openAddServerModal('create');
 }
 
 function openServer(serverId) {
@@ -961,6 +1204,7 @@ async function openChat(channelKey) {
   }
 
   rebuildMessageList(channelKey);
+  renderActivityPanel();
   scrollToBottom();
   markRead(channelKey);
 }
@@ -1035,7 +1279,11 @@ function appendMessageRow(channelKey, message, previous) {
 
 function buildMessageRow(channelKey, message, compact) {
   const author = getUser(message.authorId);
-  const row = el('li', { class: `msg${compact ? ' is-compact' : ''}`, dataset: { id: message.id, compact: String(compact) } });
+  const own = message.authorId === state.me.id;
+  const row = el('li', {
+    class: `msg${compact ? ' is-compact' : ''}${own ? ' is-own' : ' is-incoming'}`,
+    dataset: { id: message.id, compact: String(compact) }
+  });
   if (!message.deleted && Array.isArray(message.mentions) && message.mentions.includes(state.me.id)) {
     row.classList.add('is-mention');
   }
@@ -3454,7 +3702,7 @@ function wireUi() {
   ui.mnavMe.addEventListener('click', openUserSettings);
   mobileQuery.addEventListener('change', () => {
     if (isMobile()) {
-      state.memberPanelOpen = false; // full-screen overlay: opt-in on phones
+      state.activityPanelOpen = false;
     }
     if (state.me) {
       renderAll();
@@ -3463,8 +3711,13 @@ function wireUi() {
     }
   });
   ui.addServerButton.addEventListener('click', () => openAddServerModal());
+  ui.sidebarCollapseButton.addEventListener('click', () => {
+    state.sidebarCollapsed = !state.sidebarCollapsed;
+    applyMobileLayout();
+  });
   ui.homeCreateServer.addEventListener('click', () => openAddServerModal('create'));
   ui.homeJoinServer.addEventListener('click', () => openAddServerModal('join'));
+  ui.homeStartCall.addEventListener('click', startAvailableRoom);
   ui.findUserButton.addEventListener('click', openFindUserModal);
   ui.settingsButton.addEventListener('click', () => openUserSettings('profile'));
   ui.sideSearch.addEventListener('input', applySidebarFilter);
@@ -3515,10 +3768,26 @@ function wireUi() {
     }
   });
   ui.toggleMembersButton.addEventListener('click', () => {
-    state.memberPanelOpen = !state.memberPanelOpen;
-    ui.toggleMembersButton.setAttribute('aria-pressed', String(state.memberPanelOpen));
+    state.activityPanelOpen = true;
+    state.activityTab = 'members';
     renderMainView();
   });
+  ui.activityToggleButton.addEventListener('click', () => {
+    state.activityPanelOpen = !state.activityPanelOpen;
+    renderMainView();
+  });
+  ui.activityCloseButton.addEventListener('click', () => {
+    state.activityPanelOpen = false;
+    renderMainView();
+  });
+  for (const tab of document.querySelectorAll('[data-activity-tab]')) {
+    tab.addEventListener('click', () => {
+      state.activityTab = tab.dataset.activityTab;
+      renderActivityPanel();
+    });
+  }
+  ui.assistantSummaryButton.addEventListener('click', () => renderAssistantAnalysis('summary'));
+  ui.assistantDecisionsButton.addEventListener('click', () => renderAssistantAnalysis('decisions'));
   ui.addTextChannelButton.addEventListener('click', () => {
     const server = currentServerForView();
     if (server) {
@@ -3770,7 +4039,7 @@ function initFx() {
 }
 
 async function boot() {
-  state.memberPanelOpen = !isMobile();
+  state.activityPanelOpen = !isMobile();
   initFx();
   const inviteMatch = location.pathname.match(/^\/invite\/([a-z0-9]+)/i);
   if (inviteMatch) {
