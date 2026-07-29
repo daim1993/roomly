@@ -3542,3 +3542,109 @@ body,
     background: var(--canvas);
   }
 }
+
+/* ================================================================
+   Control geometry
+   Standard actions use full pills. Icon-only chat actions are true
+   circles with a fixed square footprint, never stretched ovals.
+   ================================================================ */
+
+.primary-button,
+.ghost-button,
+.load-older,
+.rec-send,
+.stop-share-button,
+.sidebar-action,
+.side-link,
+.auth-tabs button,
+.assistant-actions button,
+.modal-buttons button,
+.popover button,
+.voice-prejoin-buttons > button {
+  border-radius: 9999px !important;
+}
+
+body button:not(.icon-button):not(.home-card-item):not(.rail-item):not(.channel-item):not(.side-add-main):not(.mnav-item):not(.canvas-scrim) {
+  border-radius: 9999px !important;
+}
+
+.icon-button,
+.dock-control,
+.v-control,
+.hf-plus,
+.hc-icon,
+.hc-arrow,
+.side-add-plus,
+.activity-row-icon,
+.voice-prejoin-icon {
+  border-radius: 50% !important;
+}
+
+.reaction-chip,
+.pill-chip,
+.guest-chip {
+  border-radius: 9999px !important;
+}
+
+/* Keep destination buttons as tactile rounded tiles, not oversized pills. */
+.home-card-item,
+.rail-item,
+.channel-item,
+.side-add-main,
+.mnav-item {
+  border-radius: 28px !important;
+}
+
+.chat-view .icon-button,
+.chat-view .composer-side,
+.chat-view .composer-send,
+.chat-view .reply-bar .icon-button,
+.chat-view .rec-bar .icon-button {
+  width: 42px !important;
+  min-width: 42px !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  padding: 0 !important;
+  flex: 0 0 42px !important;
+  aspect-ratio: 1 / 1;
+  border-radius: 50% !important;
+}
+
+.chat-view .msg-actions .icon-button {
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  flex-basis: 32px !important;
+}
+
+.chat-view .icon-button svg,
+.chat-view .composer-side svg,
+.chat-view .composer-send svg {
+  width: 18px;
+  height: 18px;
+}
+
+.composer {
+  border-radius: 9999px !important;
+}
+
+@media (max-width: 820px) {
+  .home-card-item,
+  .rail-item,
+  .channel-item,
+  .side-add-main,
+  .mnav-item {
+    border-radius: 26px !important;
+  }
+
+  .chat-view .icon-button,
+  .chat-view .composer-side,
+  .chat-view .composer-send {
+    width: 40px !important;
+    min-width: 40px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    flex-basis: 40px !important;
+  }
+}
