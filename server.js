@@ -106,10 +106,12 @@ const STATIC_FILES = new Map([
   ['/', 'index.html'],
   ['/index.html', 'index.html'],
   ['/styles.css', 'styles.css'],
+  ['/refinement.css', 'refinement.css'],
   ['/app.js', 'app.js'],
   ['/admin', 'admin.html'],
   ['/admin.html', 'admin.html'],
   ['/admin.css', 'admin.css'],
+  ['/admin-refinement.css', 'admin-refinement.css'],
   ['/admin-console.js', 'admin-console.js']
 ]);
 
