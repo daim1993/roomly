@@ -19,6 +19,8 @@ const $ = (selector) => document.querySelector(selector);
 const ui = {
   authView: $('#authView'),
   appView: $('#appView'),
+  canvasScrim: $('#canvasScrim'),
+  spaceMenuButton: $('#spaceMenuButton'),
   authInviteNote: $('#authInviteNote'),
   railServers: $('#railServers'),
   homeButton: $('#homeButton'),
@@ -153,9 +155,10 @@ const state = {
   view: { kind: 'home' },
   mobilePane: 'home', // 'home' | 'nav' | 'content' — phone-size stack navigation
   voiceChatOpen: false,
-  activityPanelOpen: true,
+  activityPanelOpen: false,
   activityTab: 'activity',
   sidebarCollapsed: false,
+  spaceSwitcherOpen: false,
   replyTo: null,
   editingId: null,
   pendingAttachments: [],
@@ -283,12 +286,14 @@ function isMobile() {
 function applyMobileLayout() {
   const mobile = isMobile();
   ui.appViewEl.classList.toggle('is-mobile', mobile);
+  ui.appViewEl.classList.toggle('space-switcher-open', !mobile && state.spaceSwitcherOpen);
   ui.appViewEl.classList.toggle('sidebar-collapsed', !mobile && state.sidebarCollapsed);
   ui.appViewEl.classList.toggle('activity-open', !mobile && state.activityPanelOpen);
   ui.appViewEl.classList.toggle('m-home', mobile && state.mobilePane === 'home');
   ui.appViewEl.classList.toggle('m-nav', mobile && state.mobilePane === 'nav');
   ui.appViewEl.classList.toggle('m-content', mobile && state.mobilePane === 'content');
   ui.backButton.hidden = !(mobile && state.mobilePane === 'content');
+  ui.canvasScrim.hidden = mobile || !state.spaceSwitcherOpen;
   ui.appViewEl.classList.toggle('has-dock', mobile && voice.active);
 
   // The voice dock must survive whichever pane is hidden: on phones it lives
@@ -311,6 +316,7 @@ function applyMobileLayout() {
   ui.sidebarCollapseButton.setAttribute('aria-pressed', String(state.sidebarCollapsed));
   ui.sidebarCollapseButton.setAttribute('aria-label', state.sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation');
   ui.activityToggleButton.setAttribute('aria-pressed', String(!mobile && state.activityPanelOpen));
+  ui.spaceMenuButton.setAttribute('aria-expanded', String(!mobile && state.spaceSwitcherOpen));
 }
 
 const CARD_COLORS = 6;
@@ -504,7 +510,7 @@ function renderSidebar() {
   ui.dmPane.hidden = false; // unified sidebar: DMs are always listed
   ui.channelPane.hidden = !server;
   ui.serverMenuButton.hidden = !server;
-  ui.sidebarTitle.textContent = server ? server.name : 'Direct messages';
+  ui.sidebarTitle.textContent = server ? server.name : 'People';
 
   renderDmList();
   if (!server) {
@@ -520,10 +526,10 @@ function renderSidebar() {
     oldBanner.remove();
   }
   if (server.temp && server.expiresAt) {
-    ui.channelPane.prepend(el('div', { class: 'temp-banner', title: 'Guest-hosted servers close automatically.' },
+    ui.channelPane.prepend(el('div', { class: 'temp-banner', title: 'Guest-hosted spaces close automatically.' },
       icon('i-refresh'),
       el('span', {},
-        el('strong', { text: 'Temporary server' }),
+        el('strong', { text: 'Temporary space' }),
         el('small', { text: `Closes in ${formatRemaining(server.expiresAt)}` })
       )
     ));
@@ -654,7 +660,7 @@ function renderVoiceDock() {
   const [, serverId, channelId] = voice.channelKey.split(':');
   const server = getServer(serverId);
   const channel = getChannel(serverId, channelId);
-  ui.voiceDockName.textContent = server && channel ? `${channel.name} — ${server.name}` : 'Voice channel';
+  ui.voiceDockName.textContent = server && channel ? `${channel.name} · ${server.name}` : 'Live room';
   ui.voiceDockName.onclick = () => {
     if (server && channel) {
       openVoiceChannel(serverId, channelId);
@@ -680,12 +686,12 @@ function renderHome() {
   const hour = new Date().getHours();
   const daypart = hour < 5 ? 'tonight' : hour < 12 ? 'this morning' : hour < 18 ? 'today' : 'tonight';
   const first = (state.me.name || '').split(/\s+/)[0];
-  ui.homeGreeting.textContent = `How's it going ${daypart}, ${first}?`;
+  ui.homeGreeting.textContent = `Welcome ${daypart}, ${first}.`;
 
   const servers = Array.from(state.servers.values()).sort((a, b) => a.createdAt - b.createdAt);
   ui.homeSub.textContent = servers.length
-    ? 'Jump back into your spaces, or start something new.'
-    : 'Create a server for your crew, or join one with an invite link.';
+    ? 'Choose a space, catch up with someone, or open a live room.'
+    : 'Create a space for your people, or enter one with an invite.';
 
   const statsEl = document.getElementById('homeStats');
   if (statsEl) {
@@ -697,7 +703,7 @@ function renderHome() {
     statsEl.replaceChildren(
       el('span', { class: 'stat-cell' },
         el('b', { text: String(servers.length) }),
-        el('small', { text: servers.length === 1 ? 'Server' : 'Servers' })),
+        el('small', { text: servers.length === 1 ? 'Space' : 'Spaces' })),
       el('span', { class: 'stat-cell' },
         el('b', { text: String(state.online.size) }),
         el('small', { text: 'Online now' })),
@@ -728,7 +734,7 @@ function renderHome() {
       el('span', { class: 'hc-name', text: server.name }),
       el('span', { class: 'hc-pills' },
         el('span', { class: 'pill-chip', text: `${server.members.length} member${server.members.length === 1 ? '' : 's'}` }),
-        el('span', { class: 'pill-chip', text: `${server.channels.length} channels` }),
+        el('span', { class: 'pill-chip', text: `${server.channels.length} rooms` }),
         liveCount ? el('span', { class: 'pill-chip live', text: `● ${liveCount} in voice` }) : null,
         mentions ? el('span', { class: 'pill-chip alert', text: `${mentions} ping${mentions === 1 ? '' : 's'}` }) : null,
         !mentions && unread ? el('span', { class: 'pill-chip', text: 'new messages' }) : null,
@@ -783,8 +789,8 @@ function renderMainView() {
 
   if (view.kind === 'home') {
     ui.channelIcon.replaceChildren(icon('i-logo'));
-    ui.channelTitle.textContent = 'Welcome';
-    ui.channelTopic.textContent = 'Create or join a server to get talking';
+    ui.channelTitle.textContent = 'Today';
+    ui.channelTopic.textContent = 'Your conversations, people, and live rooms';
   } else if (view.kind === 'dm') {
     const dm = state.dms.get(view.dmId);
     const user = dm ? getUser(dm.otherUserId) : null;
@@ -795,7 +801,7 @@ function renderMainView() {
       dmAvatar.style.height = '24px';
       dmAvatar.style.fontSize = '10px';
     }
-    ui.channelTitle.textContent = user ? user.name : 'Direct message';
+    ui.channelTitle.textContent = user ? user.name : 'Conversation';
     ui.channelTopic.textContent = user && user.username ? `@${user.username}` : user && user.guest ? 'Guest' : '';
   } else {
     const channel = getChannel(view.serverId, view.channelId);
@@ -811,7 +817,7 @@ function renderMainView() {
   if (view.kind === 'text' || view.kind === 'dm' || view.kind === 'voice') {
     ui.composerInput.placeholder = view.kind === 'dm'
       ? `Message @${ui.channelTitle.textContent}`
-      : `Message #${ui.channelTitle.textContent}`;
+      : `Message ${ui.channelTitle.textContent}`;
   }
 
   renderActivityPanel();
@@ -925,7 +931,7 @@ function renderActivityOverview() {
         el('span', {}, el('b', { text: String(onlineCount) }), el('small', { text: 'online' })),
         el('span', {}, el('b', { text: String(voiceCount) }), el('small', { text: 'in voice' }))
       ),
-      el('p', { class: 'activity-note', text: `${server.name} has ${server.members.length} member${server.members.length === 1 ? '' : 's'} across ${server.channels.length} channels.` })
+      el('p', { class: 'activity-note', text: `${server.name} has ${server.members.length} member${server.members.length === 1 ? '' : 's'} across ${server.channels.length} rooms.` })
     ));
 
     const voiceList = el('div', { class: 'activity-list' });
@@ -1097,6 +1103,7 @@ function renderMembers() {
 function setView(view) {
   state.view = view;
   state.mobilePane = view.kind === 'home' ? 'home' : 'content';
+  state.spaceSwitcherOpen = false;
   state.voiceChatOpen = false;
   closePopovers();
   cancelReply();
@@ -1217,8 +1224,8 @@ function renderChatIntro() {
     if (channel) {
       ui.chatIntro.append(
         el('span', { class: 'intro-icon' }, icon('i-hash')),
-        el('h3', { text: `Welcome to #${channel.name}` }),
-        el('p', { text: channel.topic || 'This is the start of the channel.' })
+        el('h3', { text: `Welcome to ${channel.name}` }),
+        el('p', { text: channel.topic || 'This is the start of the conversation.' })
       );
     }
   } else if (view.kind === 'dm') {
@@ -2379,7 +2386,7 @@ async function joinVoice(withCamera) {
   } catch (error) {
     const message = error && error.name === 'NotAllowedError'
       ? 'Microphone access was blocked. Allow it in your browser settings.'
-      : error.message || 'Could not join the voice channel.';
+      : error.message || 'Could not join the live room.';
     toast(message, true);
   }
   renderVoiceView();
@@ -2483,7 +2490,7 @@ function openUserPopover(anchor, user, server) {
             .then(() => toast(makeAdmin ? `${fresh.name} is now an admin.` : `${fresh.name} is no longer an admin.`))
             .catch((error) => toast(error.message, true));
         }
-      }, icon('i-shield'), makeAdmin ? 'Make server admin' : 'Remove admin role'));
+      }, icon('i-shield'), makeAdmin ? 'Make space admin' : 'Remove admin role'));
     }
     if (canModerate(server, fresh.id)) {
       ui.popover.append(el('button', {
@@ -2494,7 +2501,7 @@ function openUserPopover(anchor, user, server) {
             socket.request('kick', { serverId: server.id, userId: fresh.id }).catch((error) => toast(error.message, true));
           });
         }
-      }, icon('i-x'), 'Kick from server'));
+      }, icon('i-x'), 'Remove from space'));
       ui.popover.append(el('button', {
         class: 'popover-item danger', type: 'button',
         onclick: () => {
@@ -2503,7 +2510,7 @@ function openUserPopover(anchor, user, server) {
             socket.request('ban', { serverId: server.id, userId: fresh.id }).catch((error) => toast(error.message, true));
           });
         }
-      }, icon('i-trash'), 'Ban from server'));
+      }, icon('i-trash'), 'Block from space'));
     }
   }
 
@@ -2526,11 +2533,11 @@ function openServerMenu(anchor) {
     ui.popover.append(el('button', {
       class: 'popover-item', type: 'button',
       onclick: () => { closePopovers(); openCreateChannelModal(server, 'text'); }
-    }, icon('i-plus'), 'Create channel'));
+    }, icon('i-plus'), 'Create room'));
     ui.popover.append(el('button', {
       class: 'popover-item', type: 'button',
       onclick: () => { closePopovers(); openServerSettings(server); }
-    }, icon('i-settings'), 'Server settings'));
+    }, icon('i-settings'), 'Space settings'));
   }
 
   if (server.myRole !== 'owner') {
@@ -2538,16 +2545,16 @@ function openServerMenu(anchor) {
       class: 'popover-item danger', type: 'button',
       onclick: () => {
         closePopovers();
-        confirmModal('Leave server', `You will leave ${server.name}. You can rejoin later with an invite link.`, 'Leave', () => {
+        confirmModal('Leave space', `You will leave ${server.name}. You can enter again later with an invite.`, 'Leave', () => {
           socket.request('leave-server', { serverId: server.id }).catch((error) => toast(error.message, true));
         });
       }
-    }, icon('i-logout'), 'Leave server'));
+    }, icon('i-logout'), 'Leave space'));
   } else {
     ui.popover.append(el('button', {
       class: 'popover-item danger', type: 'button',
       onclick: () => { closePopovers(); confirmDeleteServer(server); }
-    }, icon('i-trash'), 'Delete server'));
+    }, icon('i-trash'), 'Delete space'));
   }
 
   positionFloating(ui.popover, anchor);
@@ -2607,7 +2614,7 @@ function confirmModal(title, text, actionLabel, onConfirm) {
 
 function openAddServerModal(initial = 'choose') {
   openModal((card) => {
-    card.append(el('h2', { text: 'Add a server' }));
+    card.append(el('h2', { text: 'Add a space' }));
     const sub = el('p', { class: 'modal-sub', text: 'Create your own community, or join one with an invite.' });
     card.append(sub);
 
@@ -2640,16 +2647,16 @@ function openAddServerModal(initial = 'choose') {
           }
         }
       },
-        el('label', {}, 'Server name', nameInput),
+        el('label', {}, 'Space name', nameInput),
         el('label', {}, 'Icon', iconInput),
         state.me.guest ? el('p', { class: 'temp-hint' },
           icon('i-refresh'),
-          ` Guest servers are temporary — this one will close ${state.guestTtlHours} hours after creation, and you can host one at a time. Register a free account for unlimited permanent servers.`
+          ` Guest spaces are temporary. This one will close ${state.guestTtlHours} hours after creation, and you can host one at a time. Register a free account for unlimited permanent spaces.`
         ) : null,
         error,
         el('div', { class: 'modal-buttons' },
           el('button', { class: 'ghost-button', type: 'button', text: 'Back', onclick: showChoose }),
-          el('button', { class: 'primary-button', type: 'submit', text: state.me.guest ? 'Create temporary server' : 'Create server' })
+          el('button', { class: 'primary-button', type: 'submit', text: state.me.guest ? 'Create temporary space' : 'Create space' })
         )
       );
       body.replaceChildren(form);
@@ -2681,7 +2688,7 @@ function openAddServerModal(initial = 'choose') {
         error,
         el('div', { class: 'modal-buttons' },
           el('button', { class: 'ghost-button', type: 'button', text: 'Back', onclick: showChoose }),
-          el('button', { class: 'primary-button', type: 'submit', text: 'Join server' })
+          el('button', { class: 'primary-button', type: 'submit', text: 'Enter space' })
         )
       );
       body.replaceChildren(form);
@@ -2738,7 +2745,7 @@ function openInviteModal(server) {
 
 function openCreateChannelModal(server, initialKind) {
   openModal((card) => {
-    card.append(el('h2', { text: 'Create channel' }), el('p', { class: 'modal-sub', text: `in ${server.name}` }));
+    card.append(el('h2', { text: 'Create a room' }), el('p', { class: 'modal-sub', text: `in ${server.name}` }));
     let kind = initialKind || 'text';
     const textChoice = el('button', { class: 'choice-card', type: 'button' }, icon('i-hash'), 'Text');
     const voiceChoice = el('button', { class: 'choice-card', type: 'button' }, icon('i-speaker'), 'Voice');
@@ -2751,7 +2758,7 @@ function openCreateChannelModal(server, initialKind) {
     voiceChoice.addEventListener('click', () => { kind = 'voice'; syncKind(); });
 
     const nameInput = el('input', { type: 'text', maxlength: '32' });
-    const topicInput = el('input', { type: 'text', maxlength: '250', placeholder: 'What is this channel about? (optional)' });
+    const topicInput = el('input', { type: 'text', maxlength: '250', placeholder: 'What is this room for? (optional)' });
     const error = el('p', { class: 'form-error' });
 
     card.append(el('form', {
@@ -2779,12 +2786,12 @@ function openCreateChannelModal(server, initialKind) {
       }
     },
       el('div', { class: 'choice-row' }, textChoice, voiceChoice),
-      el('label', {}, 'Channel name', nameInput),
+      el('label', {}, 'Room name', nameInput),
       el('label', {}, 'Topic', topicInput),
       error,
       el('div', { class: 'modal-buttons' },
         el('button', { class: 'ghost-button', type: 'button', text: 'Cancel', onclick: closeModal }),
-        el('button', { class: 'primary-button', type: 'submit', text: 'Create channel' })
+        el('button', { class: 'primary-button', type: 'submit', text: 'Create room' })
       )
     ));
     syncKind();
@@ -2799,7 +2806,7 @@ function openChannelSettings(server, channel) {
     const error = el('p', { class: 'form-error' });
     card.append(
       el('h2', { text: channel.type === 'text' ? `#${channel.name}` : channel.name }),
-      el('p', { class: 'modal-sub', text: 'Channel settings' }),
+      el('p', { class: 'modal-sub', text: 'Room settings' }),
       el('form', {
         class: 'modal-form',
         onsubmit: async (event) => {
@@ -2826,12 +2833,12 @@ function openChannelSettings(server, channel) {
         el('button', {
           class: 'ghost-button danger', type: 'button',
           onclick: () => {
-            confirmModal('Delete channel', `#${channel.name} and its full message history will be deleted for everyone.`, 'Delete channel', () => {
+            confirmModal('Delete room', `${channel.name} and its full message history will be deleted for everyone.`, 'Delete room', () => {
               socket.request('delete-channel', { serverId: server.id, channelId: channel.id })
                 .catch((error2) => toast(error2.message, true));
             });
           }
-        }, icon('i-trash'), 'Delete channel')
+        }, icon('i-trash'), 'Delete room')
       )
     );
   });
@@ -2844,7 +2851,7 @@ function openServerSettings(server) {
     const error = el('p', { class: 'form-error' });
 
     card.append(
-      el('h2', { text: 'Server settings' }),
+      el('h2', { text: 'Space settings' }),
       el('p', { class: 'modal-sub', text: server.name }),
       el('form', {
         class: 'modal-form',
@@ -2858,7 +2865,7 @@ function openServerSettings(server) {
           }
         }
       },
-        el('label', {}, 'Server name', nameInput),
+        el('label', {}, 'Space name', nameInput),
         el('label', {}, 'Icon (emoji)', iconInput),
         error,
         el('div', { class: 'modal-buttons' },
@@ -2893,14 +2900,14 @@ function openServerSettings(server) {
         el('button', {
           class: 'ghost-button danger', type: 'button',
           onclick: () => confirmDeleteServer(server)
-        }, icon('i-trash'), 'Delete server permanently')
+        }, icon('i-trash'), 'Delete space permanently')
       ));
     }
   });
 }
 
 function confirmDeleteServer(server) {
-  confirmModal('Delete server', `${server.name}, every channel and the full message history will be deleted for everyone. This cannot be undone.`, 'Delete server', () => {
+  confirmModal('Delete space', `${server.name}, every room and the full message history will be deleted for everyone. This cannot be undone.`, 'Delete space', () => {
     socket.request('delete-server', { serverId: server.id }).catch((error) => toast(error.message, true));
   });
 }
@@ -3244,7 +3251,7 @@ function openFindUserModal() {
     const error = el('p', { class: 'form-error' });
     card.append(
       el('h2', { text: 'Find someone' }),
-      el('p', { class: 'modal-sub', text: 'Start a direct message by exact username. You can also click any member in a server.' }),
+      el('p', { class: 'modal-sub', text: 'Start a conversation by exact username. You can also choose any person inside a space.' }),
       el('form', {
         class: 'modal-form',
         onsubmit: async (event) => {
@@ -3478,7 +3485,7 @@ function wireSocketEvents() {
     } else if (reason === 'banned' && server) {
       toast(`You were banned from ${server.name}.`, true);
     } else if (reason === 'expired') {
-      toast(`The temporary server "${(server && server.name) || 'server'}" has closed.`);
+      toast(`The temporary space "${(server && server.name) || 'space'}" has closed.`);
     }
     renderAll();
   });
@@ -3690,6 +3697,18 @@ function wireAuthForms() {
 
 function wireUi() {
   ui.homeButton.addEventListener('click', openHome);
+  ui.spaceMenuButton.addEventListener('click', () => {
+    if (isMobile()) {
+      state.mobilePane = 'nav';
+    } else {
+      state.spaceSwitcherOpen = !state.spaceSwitcherOpen;
+    }
+    applyMobileLayout();
+  });
+  ui.canvasScrim.addEventListener('click', () => {
+    state.spaceSwitcherOpen = false;
+    applyMobileLayout();
+  });
   ui.backButton.addEventListener('click', () => {
     state.mobilePane = 'nav';
     applyMobileLayout();
@@ -4039,7 +4058,7 @@ function initFx() {
 }
 
 async function boot() {
-  state.activityPanelOpen = !isMobile();
+  state.activityPanelOpen = false;
   initFx();
   const inviteMatch = location.pathname.match(/^\/invite\/([a-z0-9]+)/i);
   if (inviteMatch) {
