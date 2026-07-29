@@ -26,6 +26,13 @@ const ui = {
   homeButton: $('#homeButton'),
   addServerButton: $('#addServerButton'),
   sidebarCollapseButton: $('#sidebarCollapseButton'),
+  navOverviewButton: $('#navOverviewButton'),
+  navCallsButton: $('#navCallsButton'),
+  navMessagesButton: $('#navMessagesButton'),
+  navMessageBadge: $('#navMessageBadge'),
+  navPeopleButton: $('#navPeopleButton'),
+  navSpacesButton: $('#navSpacesButton'),
+  navSettingsButton: $('#navSettingsButton'),
   sidebarTitle: $('#sidebarTitle'),
   serverMenuButton: $('#serverMenuButton'),
   dmPane: $('#dmPane'),
@@ -62,11 +69,16 @@ const ui = {
   mobileNav: $('#mobileNav'),
   mnavHome: $('#mnavHome'),
   mnavChats: $('#mnavChats'),
+  mnavCalls: $('#mnavCalls'),
+  mnavSpaces: $('#mnavSpaces'),
   mnavMe: $('#mnavMe'),
   mnavBadge: $('#mnavBadge'),
   channelIcon: $('#channelIcon'),
   channelTitle: $('#channelTitle'),
   channelTopic: $('#channelTopic'),
+  headerSearch: $('#headerSearch'),
+  headerMeButton: $('#headerMeButton'),
+  headerMeAvatar: $('#headerMeAvatar'),
   voiceChatButton: $('#voiceChatButton'),
   invitePeopleButton: $('#invitePeopleButton'),
   toggleMembersButton: $('#toggleMembersButton'),
@@ -121,6 +133,11 @@ const ui = {
   homeCreateServer: $('#homeCreateServer'),
   homeJoinServer: $('#homeJoinServer'),
   homeStartCall: $('#homeStartCall'),
+  homeStartVoice: $('#homeStartVoice'),
+  homeLiveRoom: $('#homeLiveRoom'),
+  homeRecentList: $('#homeRecentList'),
+  homeViewLive: $('#homeViewLive'),
+  homeViewMessages: $('#homeViewMessages'),
   memberPanel: $('#memberPanel'),
   memberList: $('#memberList'),
   activityCloseButton: $('#activityCloseButton'),
@@ -298,15 +315,19 @@ function applyMobileLayout() {
 
   // The voice dock must survive whichever pane is hidden: on phones it lives
   // on <body> pinned above the nav bar; on desktop it sits in the sidebar.
-  const userBar = document.querySelector('.user-bar');
+  const desktopSidebar = document.querySelector('.sidebar');
+  const sideAddCard = document.querySelector('.side-add-card');
   if (mobile && ui.voiceDock.parentElement !== document.body) {
     document.body.append(ui.voiceDock);
-  } else if (!mobile && ui.voiceDock.parentElement === document.body && userBar) {
-    userBar.parentElement.insertBefore(ui.voiceDock, userBar);
+  } else if (!mobile && ui.voiceDock.parentElement === document.body && desktopSidebar) {
+    desktopSidebar.insertBefore(ui.voiceDock, sideAddCard || null);
   }
 
-  ui.mnavHome.classList.toggle('is-active', state.mobilePane === 'home');
-  ui.mnavChats.classList.toggle('is-active', state.mobilePane !== 'home');
+  ui.mnavHome.classList.toggle('is-active', state.view.kind === 'home');
+  ui.mnavChats.classList.toggle('is-active', state.view.kind === 'dm');
+  ui.mnavCalls.classList.toggle('is-active', state.view.kind === 'voice');
+  ui.mnavSpaces.classList.toggle('is-active', state.view.kind === 'text' || (state.mobilePane === 'nav' && state.view.kind !== 'dm'));
+  ui.mnavMe.classList.remove('is-active');
   let mentionTotal = 0;
   for (const count of Object.values(state.mentions)) {
     mentionTotal += count;
@@ -352,6 +373,7 @@ function updateTitle() {
     mentionTotal += count;
   }
   document.title = mentionTotal ? `(${mentionTotal}) Roomly` : 'Roomly';
+  updateProductNav();
   applyMobileLayout();
 }
 
@@ -365,6 +387,23 @@ function renderAll() {
   renderMainView();
   updateTitle();
   applyMobileLayout();
+}
+
+function updateProductNav() {
+  const kind = state.view.kind;
+  ui.navOverviewButton.classList.toggle('is-active', kind === 'home');
+  ui.navCallsButton.classList.toggle('is-active', kind === 'voice');
+  ui.navMessagesButton.classList.toggle('is-active', kind === 'dm');
+  ui.navSpacesButton.classList.toggle('is-active', kind === 'text');
+
+  let unread = 0;
+  for (const dm of state.dms.values()) {
+    if (isUnread(keyForDm(dm.id), dm.lastAt)) {
+      unread += 1;
+    }
+  }
+  ui.navMessageBadge.hidden = !unread;
+  ui.navMessageBadge.textContent = unread > 99 ? '99+' : String(unread);
 }
 
 function renderRail() {
@@ -492,6 +531,7 @@ function paintAvatar(node, user) {
 function renderMeBar() {
   const me = state.me;
   paintAvatar(ui.meAvatar, me);
+  paintAvatar(ui.headerMeAvatar, me);
   ui.meName.textContent = me.name;
   ui.meTag.textContent = me.guest ? 'Guest' : `@${me.username}`;
   const hpAvatar = document.getElementById('hpAvatar');
@@ -684,14 +724,12 @@ let lastViewSignature = '';
 
 function renderHome() {
   const hour = new Date().getHours();
-  const daypart = hour < 5 ? 'tonight' : hour < 12 ? 'this morning' : hour < 18 ? 'today' : 'tonight';
+  const daypart = hour < 5 ? 'Good night' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const first = (state.me.name || '').split(/\s+/)[0];
-  ui.homeGreeting.textContent = `Welcome ${daypart}, ${first}.`;
+  ui.homeSub.textContent = `${daypart},`;
+  ui.homeGreeting.textContent = first || 'Roomly';
 
   const servers = Array.from(state.servers.values()).sort((a, b) => a.createdAt - b.createdAt);
-  ui.homeSub.textContent = servers.length
-    ? 'Choose a space, catch up with someone, or open a live room.'
-    : 'Create a space for your people, or enter one with an invite.';
 
   const statsEl = document.getElementById('homeStats');
   if (statsEl) {
@@ -711,6 +749,103 @@ function renderHome() {
         el('b', { text: String(inVoice) }),
         el('small', { text: 'In voice' }))
     );
+  }
+
+  const voiceRooms = [];
+  for (const server of servers) {
+    for (const channel of server.channels.filter((candidate) => candidate.type === 'voice')) {
+      voiceRooms.push({
+        server,
+        channel,
+        people: state.voiceStates.get(keyForText(server.id, channel.id)) || []
+      });
+    }
+  }
+  voiceRooms.sort((a, b) => b.people.length - a.people.length);
+  const featuredRoom = voiceRooms[0];
+  ui.homeLiveRoom.replaceChildren();
+  if (featuredRoom) {
+    const faces = el('span', { class: 'home-live-faces', 'aria-label': 'Room participants' });
+    for (const participant of featuredRoom.people.slice(0, 4)) {
+      faces.append(avatarEl(getUser(participant.userId), 'home-live-face'));
+    }
+    if (!featuredRoom.people.length) {
+      faces.append(el('span', { class: 'home-live-empty-face' }, icon('i-users')));
+    } else if (featuredRoom.people.length > 4) {
+      faces.append(el('span', { class: 'home-live-more', text: `+${featuredRoom.people.length - 4}` }));
+    }
+    ui.homeLiveRoom.append(
+      el('span', { class: 'home-live-icon' }, icon('i-signal')),
+      el('span', { class: 'home-live-copy' },
+        el('strong', { text: featuredRoom.channel.name }),
+        el('small', {
+          text: featuredRoom.people.length
+            ? `${featuredRoom.server.name} · ${featuredRoom.people.length} live now`
+            : `${featuredRoom.server.name} · Ready when you are`
+        }),
+        faces
+      ),
+      el('button', {
+        class: 'home-live-join',
+        type: 'button',
+        text: featuredRoom.people.length ? 'Join' : 'Open',
+        onclick: () => openVoiceChannel(featuredRoom.server.id, featuredRoom.channel.id)
+      })
+    );
+  } else {
+    ui.homeLiveRoom.append(
+      el('span', { class: 'home-live-icon' }, icon('i-signal')),
+      el('span', { class: 'home-live-copy' },
+        el('strong', { text: 'Create your first live room' }),
+        el('small', { text: 'Start a space, then invite people to talk.' })
+      ),
+      el('button', {
+        class: 'home-live-join',
+        type: 'button',
+        text: 'Create',
+        onclick: () => openAddServerModal('create')
+      })
+    );
+  }
+
+  const recentDms = [...state.dms.values()]
+    .sort((a, b) => (b.lastAt || b.createdAt || 0) - (a.lastAt || a.createdAt || 0))
+    .slice(0, 4);
+  ui.homeRecentList.replaceChildren();
+  for (const dm of recentDms) {
+    const user = getUser(dm.otherUserId);
+    const bucket = state.messages.get(keyForDm(dm.id));
+    const lastMessage = bucket && bucket.list
+      ? [...bucket.list].reverse().find((message) => !message.deleted)
+      : null;
+    const preview = lastMessage ? contentPreview(lastMessage, state.users) : '';
+    const unread = isUnread(keyForDm(dm.id), dm.lastAt);
+    ui.homeRecentList.append(el('button', {
+      class: `home-recent-row${unread ? ' has-unread' : ''}`,
+      type: 'button',
+      onclick: () => openDm(dm.id)
+    },
+      el('span', { class: 'home-recent-avatar' },
+        avatarEl(user),
+        el('span', { class: `presence-dot${state.online.has(user.id) ? ' online' : ''}` })
+      ),
+      el('span', { class: 'home-recent-copy' },
+        el('strong', { text: user.name }),
+        el('small', { text: preview || (state.online.has(user.id) ? 'Online now' : 'Continue the conversation') })
+      ),
+      el('span', { class: 'home-recent-meta' },
+        el('time', { text: dm.lastAt ? formatTime(dm.lastAt) : 'New' }),
+        unread ? el('b', { text: '1', 'aria-label': 'Unread conversation' }) : null
+      )
+    ));
+  }
+  if (!recentDms.length) {
+    ui.homeRecentList.append(el('div', { class: 'home-recent-empty' },
+      el('span', {}, icon('i-users')),
+      el('strong', { text: 'No conversations yet' }),
+      el('small', { text: 'Find someone and say hello.' }),
+      el('button', { type: 'button', text: 'Find people', onclick: openFindUserModal })
+    ));
   }
 
   ui.homeServerCards.replaceChildren();
@@ -749,10 +884,25 @@ function renderHome() {
     ui.homeServerCards.append(card);
     cardIndex += 1;
   }
+  if (!servers.length) {
+    ui.homeServerCards.append(el('div', { class: 'home-empty-spaces' },
+      el('span', {}, icon('i-plus')),
+      el('strong', { text: 'Make a space for your people' }),
+      el('small', { text: 'Rooms, messages, voice and video—all in one place.' }),
+      el('button', { type: 'button', text: 'Create a space', onclick: () => openAddServerModal('create') })
+    ));
+  }
+}
+
+function refreshHomeIfVisible() {
+  if (state.view.kind === 'home') {
+    renderHome();
+  }
 }
 
 function renderMainView() {
   const view = state.view;
+  ui.appViewEl.classList.toggle('home-mode', view.kind === 'home');
   ui.homeView.hidden = view.kind !== 'home';
   if (view.kind === 'home') {
     renderHome();
@@ -789,8 +939,8 @@ function renderMainView() {
 
   if (view.kind === 'home') {
     ui.channelIcon.replaceChildren(icon('i-logo'));
-    ui.channelTitle.textContent = 'Today';
-    ui.channelTopic.textContent = 'Your conversations, people, and live rooms';
+    ui.channelTitle.textContent = 'Roomly';
+    ui.channelTopic.textContent = 'Spaces that feel close';
   } else if (view.kind === 'dm') {
     const dm = state.dms.get(view.dmId);
     const user = dm ? getUser(dm.otherUserId) : null;
@@ -1134,6 +1284,60 @@ function startAvailableRoom() {
     return;
   }
   openAddServerModal('create');
+}
+
+function openRecentConversation() {
+  const recent = [...state.dms.values()]
+    .sort((a, b) => (b.lastAt || b.createdAt || 0) - (a.lastAt || a.createdAt || 0))[0];
+  if (recent) {
+    openDm(recent.id);
+    return;
+  }
+  openFindUserModal();
+}
+
+function openSpacesHub() {
+  const firstServer = [...state.servers.values()].sort((a, b) => a.createdAt - b.createdAt)[0];
+  if (firstServer) {
+    openServer(firstServer.id);
+    return;
+  }
+  openAddServerModal('create');
+}
+
+function runGlobalSearch() {
+  const query = ui.headerSearch.value.trim().toLowerCase();
+  if (!query) {
+    ui.headerSearch.focus();
+    return;
+  }
+
+  for (const dm of state.dms.values()) {
+    const user = getUser(dm.otherUserId);
+    if (user.name.toLowerCase().includes(query) || String(user.username || '').toLowerCase().includes(query)) {
+      ui.headerSearch.value = '';
+      openDm(dm.id);
+      return;
+    }
+  }
+  for (const server of state.servers.values()) {
+    if (server.name.toLowerCase().includes(query)) {
+      ui.headerSearch.value = '';
+      openServer(server.id);
+      return;
+    }
+    const channel = server.channels.find((candidate) => candidate.name.toLowerCase().includes(query));
+    if (channel) {
+      ui.headerSearch.value = '';
+      if (channel.type === 'voice') {
+        openVoiceChannel(server.id, channel.id);
+      } else {
+        openTextChannel(server.id, channel.id);
+      }
+      return;
+    }
+  }
+  toast(`No Roomly result for "${ui.headerSearch.value.trim()}".`, true);
 }
 
 function openServer(serverId) {
@@ -3408,6 +3612,7 @@ function wireSocketEvents() {
     }
     renderSidebar();
     renderRail();
+    refreshHomeIfVisible();
     updateTitle();
   });
 
@@ -3432,6 +3637,7 @@ function wireSocketEvents() {
     delete state.mentions[channelKey];
     renderSidebar();
     renderRail();
+    refreshHomeIfVisible();
     updateTitle();
   });
 
@@ -3443,6 +3649,7 @@ function wireSocketEvents() {
     }
     renderSidebar();
     renderMembers();
+    refreshHomeIfVisible();
   });
 
   socket.on('user-updated', ({ user }) => {
@@ -3460,6 +3667,7 @@ function wireSocketEvents() {
     }
     renderSidebar();
     renderMembers();
+    refreshHomeIfVisible();
   });
 
   socket.on('server-added', ({ server, users }) => {
@@ -3503,6 +3711,7 @@ function wireSocketEvents() {
     }
     renderSidebar();
     renderMembers();
+    refreshHomeIfVisible();
   });
 
   socket.on('member-left', ({ serverId, userId }) => {
@@ -3512,6 +3721,7 @@ function wireSocketEvents() {
     }
     renderSidebar();
     renderMembers();
+    refreshHomeIfVisible();
   });
 
   socket.on('member-updated', ({ serverId, userId, role }) => {
@@ -3535,6 +3745,7 @@ function wireSocketEvents() {
       server.channels.push(channel);
     }
     renderSidebar();
+    refreshHomeIfVisible();
   });
 
   socket.on('channel-updated', ({ serverId, channel }) => {
@@ -3546,6 +3757,7 @@ function wireSocketEvents() {
       }
     }
     renderSidebar();
+    refreshHomeIfVisible();
     renderMainView();
   });
 
@@ -3561,6 +3773,7 @@ function wireSocketEvents() {
       return;
     }
     renderSidebar();
+    refreshHomeIfVisible();
   });
 
   socket.on('dm-added', ({ dm, user }) => {
@@ -3573,6 +3786,7 @@ function wireSocketEvents() {
     }
     renderSidebar();
     renderRail();
+    refreshHomeIfVisible();
   });
 
   socket.on('voice-state', ({ channelKey, participants }) => {
@@ -3592,6 +3806,7 @@ function wireSocketEvents() {
     }
     renderSidebar();
     renderVoiceView();
+    refreshHomeIfVisible();
   });
 
   socket.on('voice-kicked', () => {
@@ -3697,6 +3912,16 @@ function wireAuthForms() {
 
 function wireUi() {
   ui.homeButton.addEventListener('click', openHome);
+  document.querySelector('.side-brand').addEventListener('click', (event) => {
+    event.preventDefault();
+    openHome();
+  });
+  ui.navOverviewButton.addEventListener('click', openHome);
+  ui.navCallsButton.addEventListener('click', startAvailableRoom);
+  ui.navMessagesButton.addEventListener('click', openRecentConversation);
+  ui.navPeopleButton.addEventListener('click', openFindUserModal);
+  ui.navSpacesButton.addEventListener('click', openSpacesHub);
+  ui.navSettingsButton.addEventListener('click', () => openUserSettings('profile'));
   ui.spaceMenuButton.addEventListener('click', () => {
     if (isMobile()) {
       state.mobilePane = 'nav';
@@ -3714,10 +3939,9 @@ function wireUi() {
     applyMobileLayout();
   });
   ui.mnavHome.addEventListener('click', openHome);
-  ui.mnavChats.addEventListener('click', () => {
-    state.mobilePane = 'nav';
-    applyMobileLayout();
-  });
+  ui.mnavChats.addEventListener('click', openRecentConversation);
+  ui.mnavCalls.addEventListener('click', startAvailableRoom);
+  ui.mnavSpaces.addEventListener('click', openSpacesHub);
   ui.mnavMe.addEventListener('click', openUserSettings);
   mobileQuery.addEventListener('change', () => {
     if (isMobile()) {
@@ -3737,8 +3961,21 @@ function wireUi() {
   ui.homeCreateServer.addEventListener('click', () => openAddServerModal('create'));
   ui.homeJoinServer.addEventListener('click', () => openAddServerModal('join'));
   ui.homeStartCall.addEventListener('click', startAvailableRoom);
+  ui.homeStartVoice.addEventListener('click', startAvailableRoom);
+  ui.homeViewLive.addEventListener('click', startAvailableRoom);
+  ui.homeViewMessages.addEventListener('click', openRecentConversation);
   ui.findUserButton.addEventListener('click', openFindUserModal);
   ui.settingsButton.addEventListener('click', () => openUserSettings('profile'));
+  ui.headerMeButton.addEventListener('click', () => openUserSettings('profile'));
+  ui.headerSearch.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      runGlobalSearch();
+    } else if (event.key === 'Escape') {
+      ui.headerSearch.value = '';
+      ui.headerSearch.blur();
+    }
+  });
   ui.sideSearch.addEventListener('input', applySidebarFilter);
   ui.sideCreateBoard.addEventListener('click', () => ui.addServerButton.click());
   ui.sideAddProject.addEventListener('click', () => ui.addServerButton.click());

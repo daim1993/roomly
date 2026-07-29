@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#deddd9">
+    <meta name="theme-color" content="#090b0a">
     <meta name="description" content="Roomly — private spaces, conversations, live rooms and screen sharing in your browser">
     <title>Roomly — Your place to talk</title>
     <link rel="stylesheet" href="/styles.css">
@@ -285,6 +285,14 @@
       <button id="canvasScrim" class="canvas-scrim" type="button" aria-label="Close spaces" hidden></button>
       <!-- Spaces drawer: hidden until requested so conversation stays central -->
       <aside class="sidebar" aria-label="Spaces and conversations">
+        <a class="side-brand" href="/" aria-label="Roomly overview">
+          <span class="side-brand-mark"><svg><use href="#i-logo"></use></svg></span>
+          <span>
+            <strong>Roomly</strong>
+            <small>Spaces that feel close.</small>
+          </span>
+        </a>
+
         <header class="side-profile">
           <span id="meAvatar" class="avatar c1">R</span>
           <span class="side-profile-text">
@@ -303,6 +311,34 @@
             </button>
           </span>
         </header>
+
+        <nav class="product-nav" aria-label="Product navigation">
+          <button id="navOverviewButton" class="product-nav-item is-active" type="button">
+            <span class="product-nav-icon"><svg><use href="#i-home"></use></svg></span>
+            <span>Overview</span>
+          </button>
+          <button id="navCallsButton" class="product-nav-item" type="button">
+            <span class="product-nav-icon"><svg><use href="#i-phone"></use></svg></span>
+            <span>Calls</span>
+          </button>
+          <button id="navMessagesButton" class="product-nav-item" type="button">
+            <span class="product-nav-icon"><svg><use href="#i-hash"></use></svg></span>
+            <span>Messages</span>
+            <b id="navMessageBadge" class="product-nav-badge" hidden></b>
+          </button>
+          <button id="navPeopleButton" class="product-nav-item" type="button">
+            <span class="product-nav-icon"><svg><use href="#i-users"></use></svg></span>
+            <span>People</span>
+          </button>
+          <button id="navSpacesButton" class="product-nav-item" type="button">
+            <span class="product-nav-icon"><svg><use href="#i-logo"></use></svg></span>
+            <span>Spaces</span>
+          </button>
+          <button id="navSettingsButton" class="product-nav-item product-nav-settings" type="button">
+            <span class="product-nav-icon"><svg><use href="#i-settings"></use></svg></span>
+            <span>Settings</span>
+          </button>
+        </nav>
 
         <div class="side-search">
           <svg><use href="#i-search"></use></svg>
@@ -416,6 +452,10 @@
             </div>
             <span id="channelTopic"></span>
           </div>
+          <label class="global-search" for="headerSearch">
+            <svg><use href="#i-search"></use></svg>
+            <input id="headerSearch" type="search" placeholder="Search people, spaces, messages..." autocomplete="off">
+          </label>
           <div class="main-header-actions">
             <button id="voiceChatButton" class="icon-button" type="button" aria-label="Toggle room conversation" aria-pressed="false" hidden>
               <svg><use href="#i-hash"></use></svg>
@@ -435,6 +475,10 @@
             </button>
             <button id="toggleMembersButton" class="icon-button" type="button" aria-label="Show members" aria-pressed="false" hidden>
               <svg><use href="#i-users"></use></svg>
+            </button>
+            <button id="headerMeButton" class="header-me-button" type="button" aria-label="Open profile">
+              <span id="headerMeAvatar" class="avatar c1">R</span>
+              <span class="header-online-dot" aria-hidden="true"></span>
             </button>
           </div>
         </header>
@@ -546,25 +590,74 @@
             <!-- Home dashboard -->
             <section id="homeView" class="home-view">
               <div class="home-shell">
-                <p class="home-eyebrow"><span class="home-logo-mini"><svg><use href="#i-logo"></use></svg></span> Your day on Roomly</p>
-                <h2 id="homeGreeting">How's it going today?</h2>
-                <p class="home-sub" id="homeSub">Jump back into your spaces, or start something new.</p>
-                <section class="home-focus" aria-label="Start a conversation">
-                  <span class="home-focus-copy">
-                    <small>Live now</small>
-                    <strong>Open a room and talk</strong>
-                    <span>Start with voice or camera. No setup and no hunting through menus.</span>
+                <header class="home-intro">
+                  <p class="home-eyebrow" id="homeSub">Good evening,</p>
+                  <h2 id="homeGreeting">Roomly</h2>
+                </header>
+
+                <section class="home-call-card home-voice-card" aria-label="Start a voice call">
+                  <span class="home-card-index">01</span>
+                  <span class="home-call-copy">
+                    <strong>Start a <em>voice call</em></strong>
+                    <span>High quality voice calls with anyone, anywhere.</span>
                   </span>
-                  <button id="homeStartCall" class="primary-button home-start-call" type="button">
-                    <svg><use href="#i-cam"></use></svg> Go live
+                  <span class="home-call-orbit" aria-hidden="true">
+                    <span><svg><use href="#i-mic"></use></svg></span>
+                  </span>
+                  <button id="homeStartVoice" class="home-call-action" type="button">
+                    <span>New voice call</span>
+                    <svg><use href="#i-phone"></use></svg>
                   </button>
                 </section>
-                <div id="homeStats" class="home-stats" hidden></div>
-                <div id="homeServerCards" class="home-cards"></div>
-                <div class="home-buttons">
-                  <button id="homeCreateServer" class="primary-button" type="button"><svg><use href="#i-plus"></use></svg> Create a space</button>
-                  <button id="homeJoinServer" class="ghost-button" type="button"><svg><use href="#i-link"></use></svg> Enter an invite</button>
+
+                <section class="home-focus home-call-card home-video-card" aria-label="Start a video call">
+                  <span class="home-card-index">02</span>
+                  <span class="home-focus-copy home-call-copy">
+                    <strong>Start a <em>video call</em></strong>
+                    <span>Face-to-face conversations made simple.</span>
+                  </span>
+                  <span class="home-call-orbit" aria-hidden="true">
+                    <span><svg><use href="#i-cam"></use></svg></span>
+                  </span>
+                  <button id="homeStartCall" class="home-call-action home-start-call" type="button">
+                    <span>New video call</span>
+                    <svg><use href="#i-cam"></use></svg>
+                  </button>
+                </section>
+
+                <div class="home-side-stack">
+                  <section class="home-live-panel">
+                    <div class="home-panel-heading">
+                      <span>
+                        <small>03</small>
+                        <strong>Upcoming live room</strong>
+                      </span>
+                      <button id="homeViewLive" type="button">View all</button>
+                    </div>
+                    <div id="homeLiveRoom" class="home-live-room"></div>
+                  </section>
+
+                  <section class="home-recent-panel">
+                    <div class="home-panel-heading">
+                      <span>
+                        <small>04</small>
+                        <strong>Recent conversations</strong>
+                      </span>
+                      <button id="homeViewMessages" type="button">View all</button>
+                    </div>
+                    <div id="homeRecentList" class="home-recent-list"></div>
+                  </section>
                 </div>
+
+                <div id="homeStats" class="home-stats" hidden></div>
+                <header class="home-spaces-heading">
+                  <h3>Your spaces</h3>
+                  <span class="home-spaces-actions">
+                    <button id="homeJoinServer" class="home-text-action" type="button"><svg><use href="#i-link"></use></svg> Enter invite</button>
+                    <button id="homeCreateServer" class="home-text-action is-primary" type="button"><svg><use href="#i-plus"></use></svg> Create space</button>
+                  </span>
+                </header>
+                <div id="homeServerCards" class="home-cards"></div>
               </div>
             </section>
           </div>
@@ -607,12 +700,20 @@
       <nav id="mobileNav" class="mobile-nav" aria-label="Main navigation">
         <button id="mnavHome" class="mnav-item is-active" type="button">
           <svg><use href="#i-home"></use></svg>
-          <span>Home</span>
+          <span>Overview</span>
         </button>
         <button id="mnavChats" class="mnav-item" type="button">
           <svg><use href="#i-hash"></use></svg>
-          <span>Explore</span>
+          <span>Messages</span>
           <b id="mnavBadge" class="mnav-badge" hidden></b>
+        </button>
+        <button id="mnavCalls" class="mnav-item" type="button">
+          <svg><use href="#i-phone"></use></svg>
+          <span>Calls</span>
+        </button>
+        <button id="mnavSpaces" class="mnav-item" type="button">
+          <svg><use href="#i-logo"></use></svg>
+          <span>Spaces</span>
         </button>
         <button id="mnavMe" class="mnav-item" type="button">
           <svg><use href="#i-settings"></use></svg>
