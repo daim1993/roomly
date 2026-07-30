@@ -13,7 +13,6 @@ import { renderContent, contentPreview } from '/js/markdown.js';
 import { RoomlySocket } from '/js/socket.js';
 import { VoiceManager } from '/js/rtc.js';
 import * as fx from '/js/fx.js';
-import { initTasteMotion } from '/js/taste-motion.js';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -55,13 +54,10 @@ const ui = {
   meAvatar: $('#meAvatar'),
   meName: $('#meName'),
   meTag: $('#meTag'),
-  settingsButton: $('#settingsButton'),
   sideSearch: $('#sideSearch'),
-  sideCreateBoard: $('#sideCreateBoard'),
   sideAddProject: $('#sideAddProject'),
   sideJoinLink: $('#sideJoinLink'),
   headerFaces: $('#headerFaces'),
-  headerInviteMini: $('#headerInviteMini'),
   copyLinkButton: $('#copyLinkButton'),
   mentionBell: $('#mentionBell'),
   bellBadge: $('#bellBadge'),
@@ -131,8 +127,6 @@ const ui = {
   homeGreeting: $('#homeGreeting'),
   homeSub: $('#homeSub'),
   homeServerCards: $('#homeServerCards'),
-  homeCreateServer: $('#homeCreateServer'),
-  homeJoinServer: $('#homeJoinServer'),
   homeStartCall: $('#homeStartCall'),
   homeStartVoice: $('#homeStartVoice'),
   homeLiveRoom: $('#homeLiveRoom'),
@@ -781,9 +775,7 @@ function renderHome() {
     for (const participant of featuredRoom.people.slice(0, 4)) {
       faces.append(avatarEl(getUser(participant.userId), 'home-live-face'));
     }
-    if (!featuredRoom.people.length) {
-      faces.append(el('span', { class: 'home-live-empty-face' }, icon('i-users')));
-    } else if (featuredRoom.people.length > 4) {
+    if (featuredRoom.people.length > 4) {
       faces.append(el('span', { class: 'home-live-more', text: `+${featuredRoom.people.length - 4}` }));
     }
     ui.homeLiveRoom.append(
@@ -1017,7 +1009,6 @@ function renderHeaderFaces(server) {
     return;
   }
   ui.headerFaces.hidden = !server;
-  ui.headerInviteMini.hidden = !server;
   if (!server) {
     return;
   }
@@ -1348,24 +1339,35 @@ function openHome() {
   setView({ kind: 'home' });
 }
 
-function startAvailableRoom() {
+/** Open the most relevant live room. `autoJoin` is 'voice' (mic only) or
+    'video' (camera on) — that is the only difference between the two home
+    call cards, so they no longer trigger identical behaviour. */
+function startAvailableRoom(autoJoin = null) {
   let fallback = null;
+  let target = null;
   for (const server of state.servers.values()) {
     for (const channel of server.channels.filter((candidate) => candidate.type === 'voice')) {
-      const target = { serverId: server.id, channelId: channel.id };
+      const candidate = { serverId: server.id, channelId: channel.id };
       const people = state.voiceStates.get(keyForText(server.id, channel.id)) || [];
       if (people.length) {
-        openVoiceChannel(target.serverId, target.channelId);
-        return;
+        target = candidate;
+        break;
       }
-      fallback ||= target;
+      fallback ||= candidate;
+    }
+    if (target) {
+      break;
     }
   }
-  if (fallback) {
-    openVoiceChannel(fallback.serverId, fallback.channelId);
+  target ||= fallback;
+  if (!target) {
+    openAddServerModal('create');
     return;
   }
-  openAddServerModal('create');
+  openVoiceChannel(target.serverId, target.channelId);
+  if (autoJoin && !voice.active) {
+    joinVoice(autoJoin === 'video');
+  }
 }
 
 function openRecentConversation() {
@@ -4135,15 +4137,16 @@ function wireUi() {
     state.sidebarCollapsed = !state.sidebarCollapsed;
     applyMobileLayout();
   });
-  ui.homeCreateServer.addEventListener('click', () => openAddServerModal('create'));
-  ui.homeJoinServer.addEventListener('click', () => openAddServerModal('join'));
-  ui.homeStartCall.addEventListener('click', startAvailableRoom);
-  ui.homeStartVoice.addEventListener('click', startAvailableRoom);
-  ui.homeViewLive.addEventListener('click', startAvailableRoom);
+  // Two distinct actions: video card joins with the camera on, voice card
+  // joins with the microphone only.
+  ui.homeStartCall.addEventListener('click', () => startAvailableRoom('video'));
+  ui.homeStartVoice.addEventListener('click', () => startAvailableRoom('voice'));
+  ui.homeViewLive.addEventListener('click', openSpacesHub);
   ui.homeViewMessages.addEventListener('click', openRecentConversation);
   ui.findUserButton.addEventListener('click', openFindUserModal);
-  ui.settingsButton.addEventListener('click', () => openUserSettings('profile'));
-  ui.headerMeButton.addEventListener('click', () => openUserSettings('profile'));
+  // The header avatar opens the profile menu (status, profile, sign out) —
+  // the nav "Settings" item is the single route into the settings dialog.
+  ui.headerMeButton.addEventListener('click', () => openMeMenu(ui.headerMeButton));
   ui.headerSearch.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
@@ -4154,14 +4157,8 @@ function wireUi() {
     }
   });
   ui.sideSearch.addEventListener('input', applySidebarFilter);
-  ui.sideCreateBoard.addEventListener('click', () => ui.addServerButton.click());
-  ui.sideAddProject.addEventListener('click', () => ui.addServerButton.click());
-  ui.sideJoinLink.addEventListener('click', () => {
-    const join = document.getElementById('homeJoinServer');
-    if (join) {
-      join.click();
-    }
-  });
+  ui.sideAddProject.addEventListener('click', () => openAddServerModal('create'));
+  ui.sideJoinLink.addEventListener('click', () => openAddServerModal('join'));
   ui.mentionBell.addEventListener('click', jumpToMentions);
   ui.headerFaces.addEventListener('click', () => {
     if (!ui.toggleMembersButton.hidden) {
@@ -4172,12 +4169,6 @@ function wireUi() {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       ui.headerFaces.click();
-    }
-  });
-  ui.headerInviteMini.addEventListener('click', () => {
-    const server = getServer(state.view.serverId);
-    if (server) {
-      openInviteModal(server);
     }
   });
   ui.copyLinkButton.addEventListener('click', async () => {
@@ -4483,7 +4474,6 @@ function wireUi() {
 
 function initFx() {
   try {
-    initTasteMotion();
     fx.speakingGlow({
       getAnalysers: () => voice.analysers,
       getTarget: (key) => {

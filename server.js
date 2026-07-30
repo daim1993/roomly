@@ -108,14 +108,12 @@ const STATIC_FILES = new Map([
   ['/styles.css', 'styles.css'],
   ['/refinement.css', 'refinement.css'],
   ['/ui-system.css', 'ui-system.css'],
-  ['/taste-v1.css', 'taste-v1.css'],
   ['/app.js', 'app.js'],
   ['/admin', 'admin.html'],
   ['/admin.html', 'admin.html'],
   ['/admin.css', 'admin.css'],
   ['/admin-refinement.css', 'admin-refinement.css'],
   ['/admin-ui-system.css', 'admin-ui-system.css'],
-  ['/admin-taste-v1.css', 'admin-taste-v1.css'],
   ['/admin-console.js', 'admin-console.js']
 ]);
 
@@ -151,7 +149,10 @@ const INLINE_UPLOAD_TYPES = new Set([
 
 const SECURITY_HEADERS = {
   'Content-Security-Policy':
-    "default-src 'self'; script-src 'self'; style-src 'self'; " +
+    // Google Fonts serves the display typeface; everything else stays same-origin.
+    "default-src 'self'; script-src 'self'; " +
+    "style-src 'self' https://fonts.googleapis.com; " +
+    "font-src 'self' data: https://fonts.gstatic.com; " +
     "img-src 'self' data: blob:; media-src 'self' blob:; " +
     "connect-src 'self' ws: wss:; object-src 'none'; base-uri 'none'; " +
     "form-action 'self'; frame-ancestors 'none'",

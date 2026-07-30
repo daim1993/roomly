@@ -4126,3 +4126,472 @@ body:has(#appView.view-voice) > .voice-dock {
   letter-spacing: 0.005em !important;
   font-size: clamp(1.8rem, 3vw, 2.6rem) !important;
 }
+
+/* ================================================================== *
+ *  Alignment + shape pass                                            *
+ *  Round things are perfect circles, control rows share one height   *
+ *  and one centre line, icons sit dead-centre in their frames.       *
+ * ================================================================== */
+
+/* --- circles: anything with a round radius gets a square box ------- */
+.avatar,
+#meAvatar,
+.side-add-plus,
+.presence-dot,
+.speaking-ring,
+.color-swatch,
+.brand-mark,
+.side-brand-mark,
+.splash-logo,
+.home-live-icon,
+.intro-icon,
+.avatar-stack > *,
+.header-faces > * {
+  flex: none !important;
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+}
+.avatar,
+#meAvatar,
+.header-faces .avatar,
+.avatar-stack .avatar {
+  display: grid !important;
+  place-items: center !important;
+  padding: 0 !important;
+  text-align: center !important;
+}
+/* width and height must agree, or aspect-ratio is overruled */
+#meAvatar {
+  width: 38px !important;
+  min-width: 38px !important;
+  max-width: 38px !important;
+  height: 38px !important;
+  font-size: 0.75rem !important;
+}
+.side-add-plus {
+  width: 24px !important;
+  min-width: 24px !important;
+  height: 24px !important;
+  display: grid !important;
+  place-items: center !important;
+}
+.avatar img,
+#meAvatar img {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+}
+/* status dots stay perfectly round at every size */
+.presence-dot,
+.pill-chip.live::before,
+.voice-dock-status::before {
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 50% !important;
+}
+
+/* --- one control height per row ------------------------------------ */
+.main-header-actions > *,
+.home-panel-heading > button,
+.voice-prejoin-buttons > *,
+.side-profile-actions > * {
+  align-self: center !important;
+}
+.home-panel-heading {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  min-height: 40px !important;
+}
+.home-panel-heading > span {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  min-width: 0 !important;
+}
+.home-panel-heading > button {
+  flex: none !important;
+  height: 32px !important;
+  padding: 0 12px !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius-sm) !important;
+  background: var(--ui-surface-raised) !important;
+  color: var(--ui-text-soft) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+}
+.home-panel-heading > button:hover {
+  border-color: var(--ui-accent) !important;
+  color: var(--ui-text) !important;
+}
+
+/* header controls: identical squares, centred icons, one baseline */
+.main-header-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+.main-header-actions > .icon-button,
+.main-header-actions > .header-me-button {
+  display: grid !important;
+  place-items: center !important;
+  width: 38px !important;
+  min-width: 38px !important;
+  height: 38px !important;
+  padding: 0 !important;
+  border-radius: var(--ui-radius-sm) !important;
+}
+.main-header-actions > .ghost-button {
+  height: 38px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+}
+.header-me-button {
+  border: 0 !important;
+  background: transparent !important;
+  border-radius: 50% !important;
+}
+.header-me-button .avatar {
+  width: 34px !important;
+  min-width: 34px !important;
+  height: 34px !important;
+}
+
+/* every icon-only control centres its glyph */
+.icon-button,
+.dock-control,
+.v-control,
+.product-nav-icon,
+.rail-ic,
+.ch-icon,
+.home-call-orbit,
+.mnav-item {
+  display: grid !important;
+  place-items: center !important;
+}
+.icon-button > svg,
+.dock-control > svg,
+.product-nav-icon > svg,
+.rail-ic > svg,
+.ch-icon > svg {
+  display: block !important;
+  margin: 0 !important;
+}
+.v-control {
+  grid-auto-flow: row !important;
+  gap: 5px !important;
+  justify-items: center !important;
+  align-content: center !important;
+}
+.v-control > svg {
+  display: block !important;
+  margin: 0 auto !important;
+}
+
+/* call controls: equal width blocks on one line */
+.voice-controls {
+  display: flex !important;
+  align-items: stretch !important;
+  justify-content: center !important;
+}
+.voice-controls > .v-control {
+  flex: 0 0 86px !important;
+  height: 62px !important;
+}
+
+/* sidebar profile row: avatar, text, chevron on one centre line */
+.side-profile {
+  display: grid !important;
+  grid-template-columns: 38px minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+.side-profile-text {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  min-width: 0 !important;
+  gap: 1px !important;
+}
+.side-profile-text > * {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* space cards: title, chips and the open arrow on one line */
+.home-card-item {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 14px !important;
+}
+.home-spaces-heading {
+  display: flex !important;
+  align-items: center !important;
+  min-height: 40px !important;
+}
+
+/* chips share one height so rows read level */
+.pill-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 20px !important;
+  padding: 0 9px !important;
+  line-height: 1 !important;
+}
+
+/* message rows: avatar column aligned to the first text line */
+.msg-gutter,
+.msg .avatar {
+  align-self: start !important;
+}
+
+/* --- space cards: icon | name over chips | open arrow, on one row ---- */
+#appView .home-card-item {
+  display: grid !important;
+  grid-template-columns: 56px minmax(0, 1fr) 34px !important;
+  grid-template-rows: auto auto !important;
+  align-items: center !important;
+  gap: 6px 14px !important;
+  min-height: 0 !important;
+  padding: 16px !important;
+  text-align: left !important;
+}
+#appView .home-card-item .hc-top {
+  display: contents !important;
+}
+#appView .home-card-item .hc-icon {
+  grid-column: 1 !important;
+  grid-row: 1 / span 2 !important;
+  display: grid !important;
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 16px !important;
+  place-items: center !important;
+  font-size: 1rem !important;
+  font-weight: 800 !important;
+}
+#appView .home-card-item .hc-arrow {
+  grid-column: 3 !important;
+  grid-row: 1 / span 2 !important;
+  display: grid !important;
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 50% !important;
+  background: var(--ui-surface-raised) !important;
+  color: var(--ui-text-soft) !important;
+  place-items: center !important;
+  transform: rotate(180deg) !important; /* points into the space */
+}
+#appView .home-card-item .hc-name {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  align-self: end !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 0.9375rem !important;
+  font-weight: 750 !important;
+}
+#appView .home-card-item .hc-pills {
+  grid-column: 2 !important;
+  grid-row: 2 !important;
+  align-self: start !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin: 0 !important;
+}
+#appView .home-card-item .hc-big {
+  display: none !important; /* the member count already shows as a chip */
+}
+
+/* --- featured live room: icon | copy | action, one row -------------- */
+#appView .home-live-room {
+  display: grid !important;
+  grid-template-columns: 48px minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 14px !important;
+}
+#appView .home-live-icon {
+  grid-column: 1 !important;
+  width: 48px !important;
+  height: 48px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 50% !important;
+  background: var(--ui-success-soft) !important;
+  color: var(--ui-success) !important;
+}
+#appView .home-live-copy {
+  grid-column: 2 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+}
+#appView .home-live-copy > strong,
+#appView .home-live-copy > small {
+  display: block !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+#appView .home-live-copy .home-live-faces {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0 !important;
+  margin-top: 2px !important;
+}
+#appView .home-live-join {
+  grid-column: 3 !important;
+  flex: none !important;
+  height: 34px !important;
+  padding: 0 16px !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius-sm) !important;
+  background: var(--ui-surface-raised) !important;
+  color: var(--ui-text) !important;
+  font-size: 0.8125rem !important;
+  font-weight: 700 !important;
+}
+#appView .home-live-join:hover {
+  border-color: var(--ui-accent) !important;
+  background: var(--ui-accent-soft) !important;
+}
+#appView .home-panel-heading > button {
+  height: 32px !important;
+  min-height: 32px !important;
+}
+
+/* --- sidebar rows: single line, action buttons on the centre line --- */
+.sidebar-action,
+.side-link,
+.side-add-sub {
+  align-items: center !important;
+}
+.sidebar-action > span,
+.sidebar-action {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+.sidebar-label-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  min-height: 28px !important;
+}
+.sidebar-label-row > .sidebar-label {
+  margin: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+.sidebar-label-row > .icon-button {
+  flex: none !important;
+  width: 24px !important;
+  height: 24px !important;
+}
+/* the space row's overflow menu sits on the row's centre line */
+#appView .server-rail .rail-row > .icon-button,
+#appView .server-rail .rail-row > #serverMenuButton {
+  align-self: center !important;
+  width: 28px !important;
+  height: 28px !important;
+  margin-left: 2px !important;
+}
+/* live-room rows: speaker icon, name and the live chip on one line */
+#appView .channel-item {
+  align-items: center !important;
+}
+#appView .channel-item .ch-pills {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+}
+#appView .occ-row {
+  display: grid !important;
+  grid-template-columns: 24px minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding-left: 34px !important;
+}
+
+/* --- call controls: four identical blocks, grille on both sides ----- */
+#appView .voice-controls > .v-control,
+#appView .voice-controls > .v-control.leave {
+  flex: 0 0 92px !important;
+  width: 92px !important;
+  min-width: 92px !important;
+  max-width: 92px !important;
+  height: 64px !important;
+  padding: 0 !important;
+}
+@media (min-width: 980px) {
+  .voice-controls::before,
+  .voice-controls::after {
+    content: "";
+    position: absolute;
+    top: 14px;
+    bottom: 18px;
+    width: 140px;
+    background-image: radial-gradient(circle, oklch(0.32 0.012 75) 2.2px, transparent 2.8px);
+    background-size: 13px 13px;
+    opacity: 0.8;
+    pointer-events: none;
+  }
+  .voice-controls::before { left: 8px; }
+  .voice-controls::after { right: 8px; }
+}
+
+/* empty face stacks take no vertical space */
+#appView .home-live-faces:empty {
+  display: none !important;
+}
+
+/* --- final alignment corrections ----------------------------------- */
+/* LEAVE carried an extra margin that pushed the control group off centre */
+#appView .voice-controls > .v-control,
+#appView .voice-controls > .v-control.leave {
+  margin: 0 !important;
+}
+
+/* channel / live-room rows fill the sidebar instead of shrinking to text */
+#appView #channelPane,
+#appView #textChannelList,
+#appView #voiceChannelList,
+#appView #dmList,
+#appView .dm-pane {
+  display: block !important;
+  width: 100% !important;
+}
+#appView #textChannelList > *,
+#appView #voiceChannelList > *,
+#appView #dmList > * {
+  width: 100% !important;
+}
+#appView .channel-item,
+#appView .dm-item {
+  width: 100% !important;
+  min-height: 40px !important;
+  grid-template-rows: none !important;
+  align-content: center !important;
+}
+#appView .channel-item > .ch-pills {
+  justify-self: end !important;
+}
+#appView .occ-row {
+  width: 100% !important;
+}
