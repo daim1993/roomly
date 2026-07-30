@@ -124,6 +124,13 @@ const ui = {
   vScreenButton: $('#vScreenButton'),
   vLeaveButton: $('#vLeaveButton'),
   homeView: $('#homeView'),
+  messagesView: $('#messagesView'),
+  messagesList: $('#messagesList'),
+  messagesEmpty: $('#messagesEmpty'),
+  messagesCount: $('#messagesCount'),
+  messagesSearch: $('#messagesSearch'),
+  messagesNew: $('#messagesNew'),
+  messagesEmptyFind: $('#messagesEmptyFind'),
   homeGreeting: $('#homeGreeting'),
   homeSub: $('#homeSub'),
   homeServerCards: $('#homeServerCards'),
@@ -179,7 +186,8 @@ const state = {
   focusedScreen: null,
   pinned: null, // 'self' | connId — Meet-style participant pin
   pendingInvite: null,
-  booted: false
+  booted: false,
+  messagesFilter: ''
 };
 
 let modalReturnFocus = null;
@@ -401,6 +409,7 @@ function renderAll() {
 function updateProductNav() {
   const kind = state.view.kind;
   setNavigationState(ui.navOverviewButton, kind === 'home');
+  setNavigationState(ui.navMessagesButton, kind === 'messages' || kind === 'dm');
   setNavigationState(ui.navCallsButton, kind === 'voice');
   setNavigationState(ui.navMessagesButton, kind === 'dm');
   setNavigationState(ui.navSpacesButton, kind === 'text');
@@ -555,6 +564,11 @@ function renderSidebar() {
 
   ui.dmPane.hidden = false; // unified sidebar: DMs are always listed
   ui.channelPane.hidden = !server;
+  // Section headings only make sense when the section has rows.
+  const spacesLabel = document.querySelector('.sidebar-scroll > .side-label');
+  if (spacesLabel) {
+    spacesLabel.hidden = !state.servers.size;
+  }
   ui.serverMenuButton.hidden = !server;
   ui.sidebarTitle.textContent = server ? server.name : 'People';
 
@@ -918,15 +932,19 @@ function placeChatView(inContextPanel) {
 
 function renderMainView() {
   const view = state.view;
-  const viewKinds = ['home', 'text', 'dm', 'voice'];
+  const viewKinds = ['home', 'messages', 'text', 'dm', 'voice'];
   ui.appViewEl.dataset.view = view.kind;
   for (const kind of viewKinds) {
     ui.appViewEl.classList.toggle(`view-${kind}`, view.kind === kind);
   }
   ui.appViewEl.classList.toggle('home-mode', view.kind === 'home');
   ui.homeView.hidden = view.kind !== 'home';
+  ui.messagesView.hidden = view.kind !== 'messages';
   if (view.kind === 'home') {
     renderHome();
+  }
+  if (view.kind === 'messages') {
+    renderMessages();
   }
   const voiceContextChat = view.kind === 'voice' &&
     state.activityPanelOpen &&
@@ -945,7 +963,10 @@ function renderMainView() {
   const signature = `${view.kind}:${view.serverId || ''}:${view.channelId || view.dmId || ''}`;
   if (signature !== lastViewSignature) {
     lastViewSignature = signature;
-    const pane = view.kind === 'voice' ? ui.voiceView : view.kind === 'home' ? ui.homeView : ui.chatView;
+    const pane = view.kind === 'voice' ? ui.voiceView
+      : view.kind === 'home' ? ui.homeView
+      : view.kind === 'messages' ? ui.messagesView
+      : ui.chatView;
     pane.classList.remove('view-anim');
     void pane.offsetWidth; // restart the animation
     pane.classList.add('view-anim');
@@ -971,6 +992,10 @@ function renderMainView() {
     ui.channelIcon.replaceChildren(icon('i-logo'));
     ui.channelTitle.textContent = 'Roomly';
     ui.channelTopic.textContent = 'Spaces that feel close';
+  } else if (view.kind === 'messages') {
+    ui.channelIcon.replaceChildren(icon('i-hash'));
+    ui.channelTitle.textContent = 'Messages';
+    ui.channelTopic.textContent = 'All your conversations';
   } else if (view.kind === 'dm') {
     const dm = state.dms.get(view.dmId);
     const user = dm ? getUser(dm.otherUserId) : null;
@@ -1370,14 +1395,74 @@ function startAvailableRoom(autoJoin = null) {
   }
 }
 
-function openRecentConversation() {
-  const recent = [...state.dms.values()]
-    .sort((a, b) => (b.lastAt || b.createdAt || 0) - (a.lastAt || a.createdAt || 0))[0];
-  if (recent) {
-    openDm(recent.id);
-    return;
+/** The Messages tab is an inbox, not a jump-to-latest shortcut: every
+    conversation with its last line, newest first. */
+function openMessages() {
+  setView({ kind: 'messages' });
+}
+
+function renderMessages() {
+  const filter = (state.messagesFilter || '').trim().toLowerCase();
+  const conversations = [...state.dms.values()]
+    .map((dm) => {
+      const user = getUser(dm.otherUserId);
+      const key = keyForDm(dm.id);
+      const bucket = state.messages.get(key);
+      const last = bucket && bucket.list
+        ? [...bucket.list].reverse().find((message) => !message.deleted)
+        : null;
+      return {
+        dm,
+        user,
+        last,
+        at: (last && last.createdAt) || dm.lastAt || dm.createdAt || 0,
+        mentions: state.mentions[key] || 0,
+        unread: isUnread(key, dm.lastAt)
+      };
+    })
+    .filter((row) => !filter || (row.user && (
+      String(row.user.name || '').toLowerCase().includes(filter) ||
+      String(row.user.username || '').toLowerCase().includes(filter))))
+    .sort((a, b) => b.at - a.at);
+
+  ui.messagesCount.textContent = conversations.length
+    ? `${conversations.length} conversation${conversations.length === 1 ? '' : 's'}`
+    : 'Your conversations';
+  ui.messagesEmpty.hidden = conversations.length > 0;
+  ui.messagesList.replaceChildren();
+
+  for (const row of conversations) {
+    const preview = row.last
+      ? (row.last.authorId === state.me.id ? 'You: ' : '') + contentPreview(row.last, state.users)
+      : 'No messages yet';
+    const item = el('button', {
+      class: `messages-row${row.unread || row.mentions ? ' has-unread' : ''}`,
+      type: 'button',
+      onclick: () => openDm(row.dm.id)
+    },
+      avatarEl(row.user),
+      el('span', { class: 'mr-body' },
+        el('span', { class: 'mr-top' },
+          el('strong', { class: 'mr-name', text: row.user ? row.user.name : 'Someone' }),
+          el('span', { class: 'mr-time', text: row.at ? formatTimeSmart(row.at) : '' })
+        ),
+        el('span', { class: 'mr-bottom' },
+          el('span', { class: 'mr-preview', text: preview }),
+          row.mentions
+            ? el('span', { class: 'mr-badge', text: row.mentions > 99 ? '99+' : String(row.mentions) })
+            : (row.unread ? el('span', { class: 'mr-dot' }) : null)
+        )
+      )
+    );
+    if (state.online.has(row.dm.otherUserId)) {
+      item.classList.add('is-online');
+    }
+    ui.messagesList.append(item);
   }
-  openFindUserModal();
+}
+
+function openRecentConversation() {
+  openMessages();
 }
 
 function openSpacesHub() {
@@ -3824,6 +3909,7 @@ function applyReady(snapshot) {
   const view = state.view;
   const stillValid =
     view.kind === 'home' ||
+    view.kind === 'messages' ||
     (view.kind === 'dm' && state.dms.has(view.dmId)) ||
     ((view.kind === 'text' || view.kind === 'voice') && getChannel(view.serverId, view.channelId));
   if (!stillValid) {
@@ -4229,7 +4315,7 @@ function wireUi() {
   });
   ui.navOverviewButton.addEventListener('click', openHome);
   ui.navCallsButton.addEventListener('click', startAvailableRoom);
-  ui.navMessagesButton.addEventListener('click', openRecentConversation);
+  ui.navMessagesButton.addEventListener('click', openMessages);
   ui.navPeopleButton.addEventListener('click', openFindUserModal);
   ui.navSpacesButton.addEventListener('click', openSpacesHub);
   ui.navSettingsButton.addEventListener('click', () => openUserSettings('profile'));
@@ -4250,7 +4336,7 @@ function wireUi() {
     applyMobileLayout();
   });
   ui.mnavHome.addEventListener('click', openHome);
-  ui.mnavChats.addEventListener('click', openRecentConversation);
+  ui.mnavChats.addEventListener('click', openMessages);
   ui.mnavCalls.addEventListener('click', startAvailableRoom);
   ui.mnavSpaces.addEventListener('click', openSpacesHub);
   ui.mnavMe.addEventListener('click', () => openUserSettings('profile'));
@@ -4274,7 +4360,13 @@ function wireUi() {
   ui.homeStartCall.addEventListener('click', () => startAvailableRoom('video'));
   ui.homeStartVoice.addEventListener('click', () => startAvailableRoom('voice'));
   ui.homeViewLive.addEventListener('click', openSpacesHub);
-  ui.homeViewMessages.addEventListener('click', openRecentConversation);
+  ui.homeViewMessages.addEventListener('click', openMessages);
+  ui.messagesNew.addEventListener('click', openFindUserModal);
+  ui.messagesEmptyFind.addEventListener('click', openFindUserModal);
+  ui.messagesSearch.addEventListener('input', () => {
+    state.messagesFilter = ui.messagesSearch.value;
+    renderMessages();
+  });
   ui.findUserButton.addEventListener('click', openFindUserModal);
   // The header avatar opens the profile menu (status, profile, sign out) —
   // the nav "Settings" item is the single route into the settings dialog.

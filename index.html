@@ -595,6 +595,32 @@
               </div>
             </section>
 
+            <!-- Messages inbox: every conversation with its latest line -->
+            <section id="messagesView" class="messages-view" hidden aria-label="Messages">
+              <header class="messages-head">
+                <div class="messages-head-text">
+                  <h2>Messages</h2>
+                  <p id="messagesCount">Your conversations</p>
+                </div>
+                <button id="messagesNew" class="primary-button" type="button">
+                  <svg><use href="#i-plus"></use></svg> New message
+                </button>
+              </header>
+              <label class="messages-search" for="messagesSearch">
+                <svg><use href="#i-search"></use></svg>
+                <input id="messagesSearch" type="search" placeholder="Search conversations" autocomplete="off">
+              </label>
+              <div id="messagesList" class="messages-list"></div>
+              <div id="messagesEmpty" class="messages-empty" hidden>
+                <span class="messages-empty-icon"><svg><use href="#i-users"></use></svg></span>
+                <h3>No conversations yet</h3>
+                <p>Find someone by username and say hello.</p>
+                <button id="messagesEmptyFind" class="ghost-button" type="button">
+                  <svg><use href="#i-search"></use></svg> Find someone
+                </button>
+              </div>
+            </section>
+
             <!-- Home dashboard -->
             <section id="homeView" class="home-view">
               <div class="home-shell">

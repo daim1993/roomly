@@ -5019,3 +5019,473 @@ body .choice-card svg {
   width: 22px !important;
   height: 22px !important;
 }
+
+/* ================================================================== *
+ *  Density pass — one control scale for the whole product            *
+ *  Dialogs shrink to their content, form controls stop inflating,    *
+ *  and list rows get back the weight they lost.                      *
+ * ================================================================== */
+
+:root {
+  --ui-field: 42px;
+  --ui-row: 44px;
+  --ui-gap: 12px;
+}
+
+/* --- dialogs size to content instead of a fixed slab --------------- */
+.modal-root .modal-card {
+  width: min(calc(100vw - 32px), 440px) !important;
+  max-width: 440px !important;
+  height: auto !important;
+  max-height: min(86dvh, 720px) !important;
+  padding: 20px !important;
+}
+.modal-root .modal-card > h2,
+.modal-root .modal-card > h3 {
+  margin: 0 36px 4px 0 !important;
+  font-size: 1.0625rem !important;
+  line-height: 1.25 !important;
+}
+.modal-root .modal-card > .modal-sub {
+  margin: 0 0 14px !important;
+  font-size: 0.8125rem !important;
+  line-height: 1.45 !important;
+}
+/* the invite dialog needs a little more room for the link box */
+.modal-root .modal-card:has(.invite-link-box) {
+  width: min(calc(100vw - 32px), 500px) !important;
+  max-width: 500px !important;
+}
+
+/* close button in the actual corner, at icon-button size */
+.modal-root .modal-close,
+.modal-root .modal-card > .modal-close,
+.modal-root .modal-card.settings-card > .modal-close {
+  position: absolute !important;
+  top: 12px !important;
+  right: 12px !important;
+  width: 30px !important;
+  min-width: 30px !important;
+  max-width: 30px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 9px !important;
+  background: var(--ui-surface-raised) !important;
+  display: grid !important;
+  place-items: center !important;
+}
+.modal-root .modal-close:hover {
+  border-color: var(--ui-accent) !important;
+  background: var(--ui-accent-soft) !important;
+}
+.modal-root .modal-close > svg {
+  width: 14px !important;
+  height: 14px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* --- form controls: one height, tight label spacing ---------------- */
+.modal-root .modal-form,
+.auth-card .auth-form {
+  display: grid !important;
+  gap: var(--ui-gap) !important;
+}
+.modal-root .modal-form label,
+.auth-card .auth-form label {
+  display: grid !important;
+  gap: 5px !important;
+  margin: 0 !important;
+  font-size: 0.6875rem !important;
+  font-weight: 750 !important;
+  letter-spacing: 0.07em !important;
+  text-transform: uppercase !important;
+  color: var(--ui-text-muted) !important;
+}
+.modal-root .modal-card :is(input[type="text"], input[type="password"], input[type="search"], input[type="email"], select, .ttl-select),
+.auth-card :is(input[type="text"], input[type="password"], input[type="email"]) {
+  width: 100% !important;
+  height: var(--ui-field) !important;
+  min-height: var(--ui-field) !important;
+  max-height: var(--ui-field) !important;
+  padding: 0 12px !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 11px !important;
+  background: var(--ui-canvas) !important;
+  color: var(--ui-text) !important;
+  font-size: 0.875rem !important;
+  line-height: var(--ui-field) !important;
+  box-shadow: none !important;
+}
+.modal-root .modal-card textarea,
+.auth-card textarea {
+  width: 100% !important;
+  min-height: 84px !important;
+  max-height: 180px !important;
+  padding: 10px 12px !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 11px !important;
+  background: var(--ui-canvas) !important;
+  color: var(--ui-text) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  box-shadow: none !important;
+  resize: vertical !important;
+}
+/* one focus treatment everywhere: the brand accent, no stray blue ring */
+.modal-root .modal-card :is(input, textarea, select):focus,
+.modal-root .modal-card :is(input, textarea, select):focus-visible,
+.auth-card :is(input, textarea):focus,
+.auth-card :is(input, textarea):focus-visible,
+.side-search:focus-within,
+.global-search:focus-within,
+.composer:focus-within {
+  outline: none !important;
+  border-color: var(--ui-accent) !important;
+  box-shadow: 0 0 0 3px var(--ui-accent-soft) !important;
+}
+
+/* action rows sit right under the content, not floated to the bottom */
+.modal-root .modal-card :is(.modal-actions, .form-actions, .modal-buttons) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  margin-top: 16px !important;
+  padding: 0 !important;
+}
+.modal-root .modal-card :is(.primary-button, .ghost-button) {
+  height: var(--ui-field) !important;
+  min-height: var(--ui-field) !important;
+  padding: 0 16px !important;
+  font-size: 0.8125rem !important;
+}
+.modal-root .modal-card .form-error:empty {
+  display: none !important;
+}
+.modal-root .modal-card .modal-tabs {
+  min-height: 38px !important;
+}
+.modal-root .modal-card .modal-tabs button {
+  height: 32px !important;
+  min-height: 32px !important;
+  font-size: 0.8125rem !important;
+}
+
+/* settings dialog keeps its taller frame but the same control scale */
+.modal-root .modal-card.settings-card {
+  width: min(calc(100vw - 32px), 480px) !important;
+  max-width: 480px !important;
+  height: min(580px, 86dvh) !important;
+  max-height: min(580px, 86dvh) !important;
+}
+.modal-root .modal-card.settings-card > h2,
+.modal-root .modal-card.settings-card > .modal-sub {
+  padding: 18px 20px 0 !important;
+}
+.modal-root .modal-card.settings-card > .modal-tabs {
+  margin: 12px 20px 0 !important;
+}
+.modal-root .modal-card.settings-card > *:not(h2):not(.modal-sub):not(.modal-tabs):not(.modal-close) {
+  padding: 14px 20px 18px !important;
+}
+
+/* --- popover menus: even rows, icons on one rail ------------------- */
+.popover {
+  min-width: 216px !important;
+  padding: 6px !important;
+  border-radius: 14px !important;
+}
+.popover .menu-item,
+.popover button:not(.icon-button) {
+  display: grid !important;
+  grid-template-columns: 20px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  min-height: 38px !important;
+  padding: 0 10px !important;
+  border-radius: 9px !important;
+  font-size: 0.8125rem !important;
+  text-align: left !important;
+}
+.popover .menu-item > svg,
+.popover button:not(.icon-button) > svg {
+  justify-self: center !important;
+  width: 16px !important;
+  height: 16px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: var(--ui-text-soft) !important;
+}
+.popover .menu-head,
+.popover .popover-head {
+  display: grid !important;
+  grid-template-columns: 36px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 8px 10px 10px !important;
+  border-bottom: 1px solid var(--ui-border) !important;
+  margin-bottom: 6px !important;
+}
+.popover .menu-head .avatar {
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+}
+
+/* --- lists get their weight back ----------------------------------- */
+#appView :is(.channel-item, .dm-item, .occ-row, .member-row) {
+  min-height: var(--ui-row) !important;
+  font-size: 0.875rem !important;
+}
+#appView :is(.channel-name, .dm-name, .occ-name, .member-name) {
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+}
+#appView .server-rail .rail-item {
+  min-height: var(--ui-row) !important;
+}
+#appView .server-rail .rail-name {
+  font-size: 0.875rem !important;
+  font-weight: 650 !important;
+}
+#appView .sidebar-label,
+#appView .side-label {
+  margin: 16px 10px 6px !important;
+}
+
+/* ================================================================== *
+ *  Messages inbox — conversation list with the latest line           *
+ * ================================================================== */
+#appView .messages-view {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  padding: 22px clamp(14px, 3vw, 30px) 20px;
+  overflow-y: auto;
+}
+#appView .messages-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  flex: none;
+}
+#appView .messages-head-text h2 {
+  margin: 0 !important;
+  font-family: var(--yz-display) !important;
+  font-weight: 400 !important;
+  font-size: clamp(1.9rem, 3vw, 2.6rem) !important;
+  line-height: 1 !important;
+  letter-spacing: 0.005em !important;
+  text-transform: uppercase !important;
+  color: var(--ui-text) !important;
+}
+#appView .messages-head-text p {
+  margin: 5px 0 0 !important;
+  color: var(--ui-text-muted) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+#appView .messages-head .primary-button {
+  flex: none !important;
+  height: 42px !important;
+}
+#appView .messages-search {
+  display: grid !important;
+  grid-template-columns: 18px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 9px !important;
+  flex: none;
+  height: 44px !important;
+  padding: 0 14px !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 12px !important;
+  background: var(--ui-surface) !important;
+}
+#appView .messages-search svg {
+  width: 16px !important;
+  height: 16px !important;
+  color: var(--ui-text-muted) !important;
+}
+#appView .messages-search input {
+  height: 42px !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--ui-text) !important;
+  font-size: 0.875rem !important;
+  box-shadow: none !important;
+}
+#appView .messages-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+#appView .messages-row {
+  display: grid !important;
+  grid-template-columns: 46px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 13px !important;
+  width: 100% !important;
+  min-height: 68px !important;
+  padding: 10px 14px !important;
+  border: 1px solid transparent !important;
+  border-radius: 14px !important;
+  background: transparent !important;
+  color: var(--ui-text) !important;
+  text-align: left !important;
+  cursor: pointer;
+}
+#appView .messages-row:hover {
+  border-color: var(--ui-border) !important;
+  background: var(--ui-surface) !important;
+}
+#appView .messages-row .avatar {
+  width: 46px !important;
+  min-width: 46px !important;
+  height: 46px !important;
+  font-size: 0.875rem !important;
+}
+/* a green ring marks who is online, matching the connection colour */
+#appView .messages-row.is-online .avatar {
+  box-shadow: 0 0 0 2px var(--ui-canvas), 0 0 0 4px var(--ui-success) !important;
+}
+#appView .messages-row .mr-body {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  min-width: 0 !important;
+}
+#appView .messages-row .mr-top,
+#appView .messages-row .mr-bottom {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+#appView .messages-row .mr-name {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 0.9375rem !important;
+  font-weight: 700 !important;
+}
+#appView .messages-row .mr-time {
+  flex: none !important;
+  color: var(--ui-text-muted) !important;
+  font-size: 0.6875rem !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+  white-space: nowrap !important;
+}
+#appView .messages-row .mr-preview {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  color: var(--ui-text-muted) !important;
+  font-size: 0.8125rem !important;
+}
+#appView .messages-row.has-unread .mr-preview {
+  color: var(--ui-text) !important;
+  font-weight: 650 !important;
+}
+#appView .messages-row.has-unread .mr-time {
+  color: var(--ui-accent) !important;
+}
+#appView .messages-row .mr-badge {
+  display: grid !important;
+  place-items: center !important;
+  min-width: 20px !important;
+  height: 20px !important;
+  padding: 0 6px !important;
+  border-radius: 999px !important;
+  background: var(--ui-accent) !important;
+  color: oklch(0.99 0.01 85) !important;
+  font-size: 0.6875rem !important;
+  font-weight: 800 !important;
+}
+#appView .messages-row .mr-dot {
+  width: 9px !important;
+  height: 9px !important;
+  border-radius: 50% !important;
+  background: var(--ui-accent) !important;
+}
+#appView .messages-empty {
+  display: grid !important;
+  justify-items: center !important;
+  gap: 8px !important;
+  margin-top: 40px !important;
+  text-align: center !important;
+}
+#appView .messages-empty-icon {
+  display: grid !important;
+  place-items: center !important;
+  width: 54px !important;
+  height: 54px !important;
+  border-radius: 50% !important;
+  background: var(--ui-surface-raised) !important;
+  color: var(--ui-text-muted) !important;
+}
+#appView .messages-empty-icon svg {
+  width: 22px !important;
+  height: 22px !important;
+}
+#appView .messages-empty h3 {
+  margin: 6px 0 0 !important;
+  font-size: 1rem !important;
+}
+#appView .messages-empty p {
+  margin: 0 0 8px !important;
+  color: var(--ui-text-muted) !important;
+  font-size: 0.8125rem !important;
+}
+
+/* the close button's right offset was still coming from an older rule */
+body .modal-root .modal-card > .modal-close,
+body #modalRoot .modal-card > .modal-close,
+body .modal-card > button.modal-close {
+  top: 12px !important;
+  right: 12px !important;
+  left: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+}
+
+/* only the settings dialog scrolls; plain dialogs shrink-wrap, so no
+   scroll gutter pushes the close button away from the corner */
+.modal-root .modal-card:not(.settings-card) {
+  overflow: visible !important;
+}
+.modal-root .modal-card:not(.settings-card):has(.invite-link-box),
+.modal-root .modal-card:not(.settings-card) {
+  scrollbar-gutter: auto !important;
+}
+
+/* [hidden] must beat the layout rules above it */
+#appView [hidden],
+#appView .messages-empty[hidden],
+#appView .messages-view[hidden],
+.modal-root [hidden] {
+  display: none !important;
+}
+
+/* inbox avatars are circles like everywhere else */
+#appView .messages-row .avatar,
+#appView .messages-row .avatar img {
+  border-radius: 50% !important;
+  overflow: hidden !important;
+}
+
+/* an empty section heading is just noise */
+#appView .side-label:has(+ .server-rail:empty),
+#appView .sidebar-label-row:has(+ div:empty) {
+  display: none !important;
+}
