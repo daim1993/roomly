@@ -1,0 +1,248 @@
+/*
+ * Roomly admin high-agency taste layer.
+ * Operational density stays compact; typography, states, and materiality
+ * match the main product without decorative dashboard clutter.
+ */
+
+:root {
+  --admin-canvas: oklch(0.155 0.007 70);
+  --admin-surface: oklch(0.205 0.009 70);
+  --admin-raised: oklch(0.242 0.011 70);
+  --admin-border: oklch(0.315 0.011 70);
+  --admin-border-strong: oklch(0.405 0.014 70);
+  --admin-text: oklch(0.955 0.008 85);
+  --admin-muted: oklch(0.65 0.012 78);
+  --admin-cyan: oklch(0.68 0.18 45);
+  --admin-cyan-soft: oklch(0.68 0.18 45 / 0.13);
+  --admin-lime: oklch(0.78 0.16 133);
+  --admin-lime-soft: oklch(0.78 0.16 133 / 0.1);
+  --admin-coral: oklch(0.69 0.2 25);
+  --admin-coral-soft: oklch(0.69 0.2 25 / 0.1);
+  --admin-focus: 0 0 0 3px oklch(0.68 0.18 45 / 0.25);
+}
+
+html,
+body,
+button,
+input,
+textarea,
+select {
+  font-family: "Geist", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif !important;
+}
+
+body {
+  background: var(--admin-canvas) !important;
+}
+
+header,
+section,
+.card {
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.045) !important;
+}
+
+header {
+  border-radius: 14px !important;
+}
+
+.mark {
+  background: var(--admin-cyan) !important;
+}
+
+#panel > h1 {
+  max-width: 12ch !important;
+  font-size: clamp(2rem, 3.2vw, 2.8rem) !important;
+  font-weight: 720 !important;
+  letter-spacing: -0.045em !important;
+}
+
+.cards {
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.card,
+.card:first-child,
+.card:nth-child(2) {
+  grid-column: span 3 !important;
+  min-height: 94px !important;
+  border-radius: 13px !important;
+  background: var(--admin-surface) !important;
+}
+
+.card:first-child,
+.card:nth-child(6) {
+  grid-column: span 5 !important;
+}
+
+.card:nth-child(2),
+.card:nth-child(7) {
+  grid-column: span 4 !important;
+}
+
+.card:nth-child(3),
+.card:nth-child(8) {
+  grid-column: span 3 !important;
+}
+
+.card:nth-child(4) {
+  grid-column: span 4 !important;
+}
+
+.card:nth-child(5) {
+  grid-column: span 3 !important;
+}
+
+.card:nth-child(n + 7) {
+  grid-column: span 3 !important;
+}
+
+.card b,
+.card.lime b,
+.card.violet b {
+  font-family: "Geist Mono", "Cascadia Code", monospace !important;
+  font-size: clamp(1.45rem, 2.2vw, 2rem) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.card.lime,
+.card.violet {
+  background: var(--admin-surface) !important;
+}
+
+.card.violet {
+  border-color: oklch(0.68 0.18 45 / 0.3) !important;
+}
+
+.card.lime {
+  border-color: oklch(0.78 0.16 133 / 0.25) !important;
+}
+
+section {
+  border-radius: 16px !important;
+}
+
+tbody tr:hover {
+  background: var(--admin-cyan-soft) !important;
+}
+
+button,
+a.back,
+input[type="search"] {
+  border-radius: 10px !important;
+  transition-duration: 180ms !important;
+  transition-property: color, background-color, border-color, opacity, transform, box-shadow !important;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+button:not(:disabled):active,
+a.back:active {
+  transform: translateY(1px) scale(0.985) !important;
+}
+
+button:hover {
+  border-color: var(--admin-cyan) !important;
+  background: var(--admin-cyan-soft) !important;
+}
+
+.table-region:focus-visible,
+input[type="search"]:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  border-color: var(--admin-cyan) !important;
+  outline-color: var(--admin-cyan) !important;
+  box-shadow: var(--admin-focus) !important;
+}
+
+.admin-loading {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-loading[hidden] {
+  display: none !important;
+}
+
+.admin-loading-title {
+  width: min(34vw, 320px);
+  height: 42px;
+}
+
+.admin-loading-metrics {
+  display: grid;
+  grid-template-columns: 5fr 4fr 3fr;
+  gap: 10px;
+}
+
+.admin-loading-metrics > span {
+  min-height: 94px;
+}
+
+.admin-loading-table {
+  min-height: 260px;
+  margin-top: 6px;
+}
+
+.taste-skeleton {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 13px;
+  background: var(--admin-raised);
+}
+
+.taste-skeleton::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.07), transparent);
+  content: "";
+  transform: translateX(-110%);
+  animation: admin-taste-shimmer 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@keyframes admin-taste-shimmer {
+  to { transform: translateX(110%); }
+}
+
+@media (max-width: 1180px) {
+  .card,
+  .card:first-child,
+  .card:nth-child(2),
+  .card:nth-child(n) {
+    grid-column: span 4 !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .card,
+  .card:first-child,
+  .card:nth-child(2),
+  .card:nth-child(n) {
+    grid-column: auto !important;
+  }
+
+  .admin-loading-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .cards,
+  .admin-loading-metrics {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .admin-loading-title {
+    width: 66%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .taste-skeleton::after {
+    display: none;
+    animation: none !important;
+  }
+}

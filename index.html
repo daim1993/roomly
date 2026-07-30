@@ -8,10 +8,11 @@
     <title>Roomly — Your place to talk</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="/styles.css">
     <link rel="stylesheet" href="/refinement.css">
     <link rel="stylesheet" href="/ui-system.css">
+    <link rel="stylesheet" href="/taste-v1.css">
     <script type="module" src="/app.js"></script>
   </head>
   <body>
@@ -202,11 +203,39 @@
 
     <!-- ============================ SPLASH ============================ -->
     <div id="splashView" class="splash-view" aria-hidden="true">
-      <div class="splash-card">
-        <span class="splash-logo"><svg><use href="#i-logo"></use></svg></span>
-        <h1>roomly</h1>
-        <p>spaces &middot; people &middot; live rooms</p>
-        <div class="splash-bar"><i></i></div>
+      <div class="splash-shell">
+        <aside class="splash-skeleton-nav">
+          <div class="splash-brand-row">
+            <span class="splash-logo"><svg><use href="#i-logo"></use></svg></span>
+            <span class="skeleton-block splash-wordmark"></span>
+          </div>
+          <span class="skeleton-block splash-nav-line is-wide"></span>
+          <span class="skeleton-block splash-nav-line"></span>
+          <span class="skeleton-block splash-nav-line is-short"></span>
+          <span class="skeleton-block splash-nav-line"></span>
+          <span class="skeleton-block splash-nav-line is-wide"></span>
+        </aside>
+        <div class="splash-skeleton-main">
+          <header class="splash-skeleton-header">
+            <span class="skeleton-block splash-title-line"></span>
+            <span class="skeleton-block splash-search-line"></span>
+          </header>
+          <div class="splash-skeleton-content">
+            <span class="skeleton-block splash-heading-line"></span>
+            <div class="splash-skeleton-feature is-primary">
+              <span class="skeleton-block splash-feature-index"></span>
+              <span class="skeleton-block splash-feature-title"></span>
+              <span class="skeleton-block splash-feature-copy"></span>
+              <span class="skeleton-block splash-feature-action"></span>
+            </div>
+            <div class="splash-skeleton-feature is-secondary">
+              <span class="skeleton-block splash-feature-index"></span>
+              <span class="skeleton-block splash-feature-title"></span>
+              <span class="skeleton-block splash-feature-copy"></span>
+              <span class="skeleton-block splash-feature-action"></span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 

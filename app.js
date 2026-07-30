@@ -13,6 +13,7 @@ import { renderContent, contentPreview } from '/js/markdown.js';
 import { RoomlySocket } from '/js/socket.js';
 import { VoiceManager } from '/js/rtc.js';
 import * as fx from '/js/fx.js';
+import { initTasteMotion } from '/js/taste-motion.js';
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -4482,6 +4483,7 @@ function wireUi() {
 
 function initFx() {
   try {
+    initTasteMotion();
     fx.speakingGlow({
       getAnalysers: () => voice.analysers,
       getTarget: (key) => {

@@ -134,15 +134,15 @@ export function aurora(host, options) {
 
 // -------------------------------------------------------------- emoji burst
 
-export function emojiBurst(x, y, emoji) {
+export function emojiBurst(x, y) {
   if (!motionOk()) {
     return;
   }
   try {
     for (let index = 0; index < 7; index += 1) {
       const span = document.createElement('span');
-      span.className = 'fx-emoji';
-      span.textContent = emoji;
+      span.className = 'fx-reaction-particle';
+      span.setAttribute('aria-hidden', 'true');
       span.style.left = `${x}px`;
       span.style.top = `${y}px`;
       span.style.setProperty('--dx', `${(Math.random() - 0.5) * 150}px`);

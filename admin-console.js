@@ -108,11 +108,13 @@ $('#userSearch').addEventListener('input', () => { clearTimeout(searchTimer); se
 (async () => {
   try {
     await refresh();
+    $('#adminLoading').hidden = true;
     $('#panel').style.display = 'block';
     $('#adminMain').setAttribute('aria-busy', 'false');
     $('#adminTitle').focus();
     setInterval(loadOverview, 15000);
   } catch {
+    $('#adminLoading').hidden = true;
     $('#gate').style.display = 'block';
     $('#adminMain').setAttribute('aria-busy', 'false');
     $('#gateTitle').focus();

@@ -5,9 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0c0e0d">
 <title>Roomly — Admin console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/admin.css">
 <link rel="stylesheet" href="/admin-refinement.css">
 <link rel="stylesheet" href="/admin-ui-system.css">
+<link rel="stylesheet" href="/admin-taste-v1.css">
 </head>
 <body>
 <div class="wrap">
@@ -20,6 +24,16 @@
   </header>
 
   <main id="adminMain" aria-busy="true">
+  <div id="adminLoading" class="admin-loading" aria-hidden="true">
+    <div class="admin-loading-title taste-skeleton"></div>
+    <div class="admin-loading-metrics">
+      <span class="taste-skeleton"></span>
+      <span class="taste-skeleton"></span>
+      <span class="taste-skeleton"></span>
+      <span class="taste-skeleton"></span>
+    </div>
+    <div class="admin-loading-table taste-skeleton"></div>
+  </div>
   <div id="gate"><h2 id="gateTitle" tabindex="-1">Platform admins only</h2><p class="muted">Sign in with a platform-admin account, then come back. <a href="/">Go to Roomly</a></p></div>
 
   <div id="panel" style="display:none">
