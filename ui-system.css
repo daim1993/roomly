@@ -3820,3 +3820,309 @@ body:has(#appView.view-voice) > .voice-dock {
 #appView .server-rail > .rail-row:first-child {
   display: none !important; /* Overview lives in the product nav above */
 }
+
+/* ================================================================== *
+ *  Theme: "Voice Connect" hardware dark                              *
+ *  Warm charcoal canvas, burnt-orange accent, green signal, heavy    *
+ *  condensed display type, physical push-button controls.            *
+ * ================================================================== */
+
+:root {
+  --yz-display: 'Anton', 'Arial Narrow', Impact, sans-serif;
+  --ui-canvas: oklch(0.165 0.008 75);
+  --ui-nav: oklch(0.185 0.009 75);
+  --ui-surface: oklch(0.215 0.01 75);
+  --ui-surface-raised: oklch(0.25 0.012 75);
+  --ui-surface-hover: oklch(0.285 0.013 75);
+  --ui-border: oklch(0.315 0.012 75);
+  --ui-border-strong: oklch(0.4 0.015 75);
+  --ui-text: oklch(0.955 0.008 85);
+  --ui-text-soft: oklch(0.75 0.014 80);
+  --ui-text-muted: oklch(0.58 0.014 78);
+  --ui-accent: oklch(0.68 0.19 45);
+  --ui-accent-soft: oklch(0.68 0.19 45 / 0.14);
+  --ui-accent-strong: oklch(0.73 0.2 45);
+  --ui-success: oklch(0.78 0.17 133);
+  --ui-success-soft: oklch(0.78 0.17 133 / 0.14);
+  --ui-focus: 0 0 0 3px oklch(0.68 0.19 45 / 0.32);
+  --ui-radius-panel: 24px;
+  --yz-screen: oklch(0.135 0.007 75);
+  --yz-press: 0 3px 0 oklch(0.09 0.006 75), 0 10px 24px oklch(0.06 0.008 75 / 0.5);
+  --yz-press-down: 0 1px 0 oklch(0.09 0.006 75);
+}
+
+/* ---- display type: heavy condensed uppercase headlines ---- */
+.auth-copy h1,
+.home-intro h2,
+.voice-prejoin h2,
+.welcome-title,
+#chatEmptyTitle {
+  font-family: var(--yz-display) !important;
+  font-weight: 400 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.005em !important;
+  line-height: 0.98 !important;
+}
+.auth-copy h1 {
+  font-size: clamp(3rem, 6.5vw, 5.2rem) !important;
+}
+.auth-copy h1 br + *,
+.home-intro h2 {
+  color: var(--ui-accent) !important;
+}
+.home-intro h2 {
+  font-size: clamp(2.2rem, 4vw, 3.4rem) !important;
+}
+.home-eyebrow {
+  color: var(--ui-text-soft) !important;
+}
+
+/* ---- eyebrow / section labels: small caps in accent orange ---- */
+.side-label,
+.sidebar-label,
+.member-group-label,
+.home-card-index,
+.call-timer > span,
+.auth-copy .eyebrow {
+  color: var(--ui-accent) !important;
+  font-size: 0.6875rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+}
+
+/* ---- buttons: physical hardware push-buttons ---- */
+.primary-button,
+.home-call-action.home-start-call,
+#voiceJoinButton {
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: var(--ui-accent) !important;
+  color: oklch(0.99 0.01 85) !important;
+  font-weight: 750 !important;
+  box-shadow: var(--yz-press) !important;
+}
+.primary-button:hover,
+#voiceJoinButton:hover {
+  background: var(--ui-accent-strong) !important;
+  transform: translateY(-1px);
+}
+.primary-button:active,
+#voiceJoinButton:active {
+  transform: translateY(2px) !important;
+  box-shadow: var(--yz-press-down) !important;
+}
+.ghost-button {
+  border: 1px solid var(--ui-border) !important;
+  background: var(--ui-surface-raised) !important;
+  color: var(--ui-text) !important;
+}
+
+/* ---- voice stage: the device screen ---- */
+#voiceStage {
+  padding: 18px !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius-panel) !important;
+  background: var(--yz-screen) !important;
+}
+.voice-tile {
+  border: 1px solid oklch(0.27 0.01 75) !important;
+  border-radius: 18px !important;
+  background: oklch(0.19 0.009 75) !important;
+}
+.voice-tile.is-speaking {
+  border-color: var(--ui-accent) !important;
+  box-shadow: 0 0 0 2px var(--ui-accent-soft), 0 0 28px oklch(0.68 0.19 45 / 0.22) !important;
+}
+
+/* call timer reads like the device readout: TIME / 00:24:18 */
+.call-timer {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 2px !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+.call-timer strong {
+  color: var(--ui-text) !important;
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+  font-variant-numeric: tabular-nums !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* physical control buttons under the screen */
+.voice-controls {
+  position: relative;
+  align-items: stretch !important;
+  gap: 12px !important;
+  padding: 10px 0 14px !important;
+}
+.v-control {
+  min-width: 76px !important;
+  border: 1px solid oklch(0.34 0.012 75) !important;
+  border-radius: 14px !important;
+  background: var(--ui-surface-raised) !important;
+  color: var(--ui-text) !important;
+  box-shadow: var(--yz-press) !important;
+}
+.v-control:hover {
+  background: var(--ui-surface-hover) !important;
+  transform: translateY(-1px);
+}
+.v-control:active {
+  transform: translateY(2px) !important;
+  box-shadow: var(--yz-press-down) !important;
+}
+.v-control .vc-label {
+  font-size: 0.625rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+}
+.v-control.leave {
+  border: 0 !important;
+  background: var(--ui-accent) !important;
+  color: oklch(0.99 0.01 85) !important;
+}
+.v-control.leave:hover {
+  background: var(--ui-accent-strong) !important;
+}
+/* speaker-grille dots beside the controls (decorative, desktop only) */
+@media (min-width: 980px) {
+  .voice-controls::after {
+    content: "";
+    position: absolute;
+    top: 12px;
+    right: 6px;
+    bottom: 16px;
+    width: 150px;
+    background-image: radial-gradient(circle, oklch(0.32 0.012 75) 2.2px, transparent 2.8px);
+    background-size: 13px 13px;
+    opacity: 0.85;
+    pointer-events: none;
+  }
+}
+
+/* dock mirrors the device: green "good connection" status */
+.voice-dock {
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 18px !important;
+  background: var(--yz-screen) !important;
+}
+.voice-dock-status {
+  color: var(--ui-success) !important;
+  font-weight: 750 !important;
+}
+.dock-control {
+  border: 1px solid oklch(0.34 0.012 75) !important;
+  background: var(--ui-surface-raised) !important;
+  box-shadow: 0 2px 0 oklch(0.09 0.006 75) !important;
+}
+.dock-control:active {
+  transform: translateY(1px) !important;
+  box-shadow: none !important;
+}
+
+/* ---- rooms list: colored icon tiles, green live signal ---- */
+#appView .server-rail .rail-ic {
+  border-radius: 10px !important;
+  color: var(--ui-text) !important;
+}
+#appView .server-rail .rail-row:nth-child(4n + 1) .rail-item .rail-ic { background: oklch(0.45 0.12 300 / 0.5) !important; }
+#appView .server-rail .rail-row:nth-child(4n + 2) .rail-item .rail-ic { background: oklch(0.5 0.12 250 / 0.5) !important; }
+#appView .server-rail .rail-row:nth-child(4n + 3) .rail-item .rail-ic { background: oklch(0.55 0.16 0 / 0.45) !important; }
+#appView .server-rail .rail-row:nth-child(4n + 4) .rail-item .rail-ic { background: oklch(0.6 0.15 45 / 0.45) !important; }
+#appView .server-rail .rail-item.is-active .rail-ic {
+  background: var(--ui-success-soft) !important;
+  color: var(--ui-success) !important;
+}
+.channel-item.is-voice .ch-icon,
+.occ-row .presence-dot.online {
+  color: var(--ui-success) !important;
+}
+
+/* ---- participants: green signal, gray muted ---- */
+.presence-dot.online {
+  background: var(--ui-success) !important;
+}
+.member-row .role-icon {
+  color: var(--ui-accent) !important;
+}
+
+/* ---- composer: rounded "Message the room…" pill ---- */
+.composer {
+  border-radius: 16px !important;
+  border: 1px solid var(--ui-border) !important;
+  background: var(--ui-surface) !important;
+}
+#composerSend,
+.composer .send-button {
+  background: var(--ui-accent) !important;
+  color: oklch(0.99 0.01 85) !important;
+  border-radius: 12px !important;
+}
+
+/* ---- auth: hero + bezel card ---- */
+.auth-view {
+  background: var(--ui-canvas) !important;
+}
+.auth-copy .eyebrow span {
+  background: var(--ui-accent) !important;
+}
+.auth-card {
+  border-radius: 26px !important;
+  box-shadow: 0 40px 90px oklch(0.05 0.008 75 / 0.55), var(--ui-shadow) !important;
+}
+.auth-points svg {
+  color: var(--ui-accent) !important;
+}
+
+/* ---- home call cards pick up the device frame look ---- */
+.home-call-card {
+  border-radius: var(--ui-radius-panel) !important;
+}
+#appView .home-call-orbit,
+#appView .home-voice-card .home-call-orbit *,
+#appView .home-voice-card .home-call-orbit svg,
+.home-call-action svg {
+  color: var(--ui-accent) !important;
+}
+#appView .home-live-room :where(svg, .home-live-icon, .hl-icon) {
+  color: var(--ui-success) !important;
+}
+
+/* nav active state: orange marker */
+.product-nav-item.is-active {
+  color: var(--ui-text) !important;
+}
+.product-nav-item.is-active .product-nav-icon {
+  color: var(--ui-accent) !important;
+}
+
+/* theme polish: stray cyan focus ring + video-card icon, welcome heading */
+#appView .composer :is(input, textarea):focus,
+#appView .composer :is(input, textarea):focus-visible {
+  outline: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+#appView .composer:focus-within {
+  border-color: var(--ui-accent) !important;
+}
+#appView .home-call-card .home-call-orbit,
+#appView .home-call-card .home-call-orbit *,
+#appView .home-call-card .home-call-orbit svg {
+  color: var(--ui-accent) !important;
+  stroke: currentColor !important;
+}
+#chatIntro h3,
+.chat-hero h3,
+.chat-empty h3 {
+  font-family: var(--yz-display) !important;
+  font-weight: 400 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.005em !important;
+  font-size: clamp(1.8rem, 3vw, 2.6rem) !important;
+}
