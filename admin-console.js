@@ -38,19 +38,19 @@ async function loadUsers() {
   const { users } = await api('/api/admin/users' + (q ? ('?q=' + encodeURIComponent(q)) : ''));
   $('#userTable tbody').innerHTML = users.map((u) => `
     <tr>
-      <td><b>${esc(u.name)}</b> <span class="muted">${u.username ? '@' + esc(u.username) : ''}</span>
+      <th scope="row"><b>${esc(u.name)}</b> <span class="muted">${u.username ? '@' + esc(u.username) : ''}</span>
         ${u.platformAdmin ? '<span class="tag admin">ADMIN</span>' : ''}
-        ${u.guest ? '<span class="tag guest">GUEST</span>' : ''}</td>
+        ${u.guest ? '<span class="tag guest">GUEST</span>' : ''}</th>
       <td class="hide-sm muted">${new Date(u.createdAt).toLocaleDateString()}</td>
       <td>${u.disabled ? '<span class="tag off">DISABLED</span>' : (u.online ? '<span class="tag online">ONLINE</span>' : '<span class="muted">offline</span>')}</td>
       <td class="hide-sm">${u.serversOwned}</td>
       <td>${u.platformAdmin ? '<span class="muted">—</span>' : `
         ${u.disabled
-          ? `<button class="good" data-act="enable" data-id="${u.id}">Enable</button>`
-          : `<button data-act="disable" data-id="${u.id}">Disable</button>`}
-        ${u.guest ? '' : `<button data-act="reset-password" data-id="${u.id}">Reset pass</button>
-        <button data-act="promote" data-id="${u.id}">Make admin</button>`}
-        <button class="danger" data-act="delete" data-id="${u.id}" data-name="${esc(u.name)}">Delete</button>`}
+          ? `<button class="good" data-act="enable" data-id="${u.id}" aria-label="Enable ${esc(u.name)}">Enable</button>`
+          : `<button data-act="disable" data-id="${u.id}" aria-label="Disable ${esc(u.name)}">Disable</button>`}
+        ${u.guest ? '' : `<button data-act="reset-password" data-id="${u.id}" aria-label="Reset password for ${esc(u.name)}">Reset pass</button>
+        <button data-act="promote" data-id="${u.id}" aria-label="Make ${esc(u.name)} a platform admin">Make admin</button>`}
+        <button class="danger" data-act="delete" data-id="${u.id}" data-name="${esc(u.name)}" aria-label="Delete ${esc(u.name)}">Delete</button>`}
       </td>
     </tr>`).join('') || '<tr><td colspan="5" class="muted">No users found.</td></tr>';
 }
@@ -59,12 +59,12 @@ async function loadServers() {
   const { servers } = await api('/api/admin/servers');
   $('#serverTable tbody').innerHTML = servers.map((s) => `
     <tr>
-      <td><b>${esc(s.icon || '')} ${esc(s.name)}</b></td>
+      <th scope="row"><b>${esc(s.icon || '')} ${esc(s.name)}</b></th>
       <td class="muted">${esc(s.ownerName)}</td>
       <td>${s.members}</td>
       <td class="hide-sm">${s.channels}</td>
       <td>${s.temp ? '<span class="tag temp">TEMP</span>' : '<span class="muted">permanent</span>'}</td>
-      <td><button class="danger" data-srv-del="${s.id}" data-name="${esc(s.name)}">Delete</button></td>
+      <td><button class="danger" data-srv-del="${s.id}" data-name="${esc(s.name)}" aria-label="Delete ${esc(s.name)}">Delete</button></td>
     </tr>`).join('') || '<tr><td colspan="6" class="muted">No servers yet.</td></tr>';
 }
 
@@ -73,6 +73,8 @@ async function refresh() { await Promise.all([loadOverview(), loadUsers(), loadS
 document.addEventListener('click', async (event) => {
   const button = event.target.closest('button[data-act], button[data-srv-del]');
   if (!button) { return; }
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
   try {
     if (button.dataset.srvDel) {
       if (!confirm(`Delete the server "${button.dataset.name}" and its full history for everyone?`)) { return; }
@@ -90,7 +92,14 @@ document.addEventListener('click', async (event) => {
       }
     }
     await refresh();
-  } catch (error) { toast(error.message); }
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    if (button.isConnected) {
+      button.disabled = false;
+      button.removeAttribute('aria-busy');
+    }
+  }
 });
 
 let searchTimer;
@@ -100,8 +109,12 @@ $('#userSearch').addEventListener('input', () => { clearTimeout(searchTimer); se
   try {
     await refresh();
     $('#panel').style.display = 'block';
+    $('#adminMain').setAttribute('aria-busy', 'false');
+    $('#adminTitle').focus();
     setInterval(loadOverview, 15000);
   } catch {
     $('#gate').style.display = 'block';
+    $('#adminMain').setAttribute('aria-busy', 'false');
+    $('#gateTitle').focus();
   }
 })();

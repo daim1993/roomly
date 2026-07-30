@@ -139,6 +139,7 @@ const ui = {
   homeViewLive: $('#homeViewLive'),
   homeViewMessages: $('#homeViewMessages'),
   memberPanel: $('#memberPanel'),
+  contextChatHost: $('#contextChatHost'),
   memberList: $('#memberList'),
   activityCloseButton: $('#activityCloseButton'),
   activityPanelTitle: $('#activityPanelTitle'),
@@ -185,6 +186,8 @@ const state = {
   pendingInvite: null,
   booted: false
 };
+
+let modalReturnFocus = null;
 
 const socket = new RoomlySocket();
 const voice = new VoiceManager({
@@ -305,7 +308,7 @@ function applyMobileLayout() {
   ui.appViewEl.classList.toggle('is-mobile', mobile);
   ui.appViewEl.classList.toggle('space-switcher-open', !mobile && state.spaceSwitcherOpen);
   ui.appViewEl.classList.toggle('sidebar-collapsed', !mobile && state.sidebarCollapsed);
-  ui.appViewEl.classList.toggle('activity-open', !mobile && state.activityPanelOpen);
+  ui.appViewEl.classList.toggle('activity-open', state.activityPanelOpen);
   ui.appViewEl.classList.toggle('m-home', mobile && state.mobilePane === 'home');
   ui.appViewEl.classList.toggle('m-nav', mobile && state.mobilePane === 'nav');
   ui.appViewEl.classList.toggle('m-content', mobile && state.mobilePane === 'content');
@@ -323,11 +326,13 @@ function applyMobileLayout() {
     desktopSidebar.insertBefore(ui.voiceDock, sideAddCard || null);
   }
 
-  ui.mnavHome.classList.toggle('is-active', state.view.kind === 'home');
-  ui.mnavChats.classList.toggle('is-active', state.view.kind === 'dm');
-  ui.mnavCalls.classList.toggle('is-active', state.view.kind === 'voice');
-  ui.mnavSpaces.classList.toggle('is-active', state.view.kind === 'text' || (state.mobilePane === 'nav' && state.view.kind !== 'dm'));
+  const navigationPaneOpen = mobile && state.mobilePane === 'nav';
+  setNavigationState(ui.mnavHome, !navigationPaneOpen && state.view.kind === 'home');
+  setNavigationState(ui.mnavChats, !navigationPaneOpen && state.view.kind === 'dm');
+  setNavigationState(ui.mnavCalls, !navigationPaneOpen && state.view.kind === 'voice');
+  setNavigationState(ui.mnavSpaces, navigationPaneOpen || (!navigationPaneOpen && state.view.kind === 'text'));
   ui.mnavMe.classList.remove('is-active');
+  ui.mnavMe.removeAttribute('aria-current');
   let mentionTotal = 0;
   for (const count of Object.values(state.mentions)) {
     mentionTotal += count;
@@ -336,8 +341,17 @@ function applyMobileLayout() {
   ui.mnavBadge.textContent = mentionTotal > 99 ? '99+' : String(mentionTotal);
   ui.sidebarCollapseButton.setAttribute('aria-pressed', String(state.sidebarCollapsed));
   ui.sidebarCollapseButton.setAttribute('aria-label', state.sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation');
-  ui.activityToggleButton.setAttribute('aria-pressed', String(!mobile && state.activityPanelOpen));
+  ui.activityToggleButton.setAttribute('aria-pressed', String(state.activityPanelOpen));
   ui.spaceMenuButton.setAttribute('aria-expanded', String(!mobile && state.spaceSwitcherOpen));
+}
+
+function setNavigationState(button, active) {
+  button.classList.toggle('is-active', active);
+  if (active) {
+    button.setAttribute('aria-current', 'page');
+  } else {
+    button.removeAttribute('aria-current');
+  }
 }
 
 const CARD_COLORS = 6;
@@ -391,10 +405,12 @@ function renderAll() {
 
 function updateProductNav() {
   const kind = state.view.kind;
-  ui.navOverviewButton.classList.toggle('is-active', kind === 'home');
-  ui.navCallsButton.classList.toggle('is-active', kind === 'voice');
-  ui.navMessagesButton.classList.toggle('is-active', kind === 'dm');
-  ui.navSpacesButton.classList.toggle('is-active', kind === 'text');
+  setNavigationState(ui.navOverviewButton, kind === 'home');
+  setNavigationState(ui.navCallsButton, kind === 'voice');
+  setNavigationState(ui.navMessagesButton, kind === 'dm');
+  setNavigationState(ui.navSpacesButton, kind === 'text');
+  ui.navPeopleButton.removeAttribute('aria-current');
+  ui.navSettingsButton.removeAttribute('aria-current');
 
   let unread = 0;
   for (const dm of state.dms.values()) {
@@ -407,7 +423,7 @@ function updateProductNav() {
 }
 
 function renderRail() {
-  ui.homeButton.classList.toggle('is-active', state.view.kind === 'home' || state.view.kind === 'dm');
+  setNavigationState(ui.homeButton, state.view.kind === 'home' || state.view.kind === 'dm');
   let dmMentions = 0;
   for (const dm of state.dms.values()) {
     dmMentions += state.mentions[keyForDm(dm.id)] || 0;
@@ -429,7 +445,6 @@ function renderRail() {
   const servers = Array.from(state.servers.values()).sort((a, b) => a.createdAt - b.createdAt);
   const activeServerId =
     (state.view.kind === 'text' || state.view.kind === 'voice') ? state.view.serverId : null;
-  let placedTree = false;
   for (const server of servers) {
     const mentions = serverMentionCount(server);
     const active = server.id === activeServerId;
@@ -443,7 +458,7 @@ function renderRail() {
       el('span', { class: 'rail-ic', text: server.icon || initials(server.name) }),
       el('span', { class: 'rail-name', text: server.name })
     );
-    button.classList.toggle('is-active', active);
+    setNavigationState(button, active);
     button.classList.toggle('has-unread', serverHasUnread(server));
     if (mentions) {
       button.append(el('span', { class: 'rail-badge', text: mentions > 99 ? '99+' : String(mentions) }));
@@ -452,13 +467,9 @@ function renderRail() {
     ui.railServers.append(row);
     if (active) {
       row.append(ui.serverMenuButton); // ⋮ rides on the active row
-      ui.railServers.append(ui.channelPane); // channel tree nests underneath
-      placedTree = true;
     }
   }
-  if (!placedTree) {
-    // Keep both nodes attached (and querySelector-able) even with no server open.
-    ui.railServers.append(ui.channelPane);
+  if (!activeServerId) {
     const header = document.getElementById('sidebarHeader');
     if (header) {
       header.append(ui.serverMenuButton);
@@ -607,7 +618,7 @@ function renderTextChannelItem(server, channel, cardIndex = 0) {
       !mentions && unread && !active ? el('span', { class: 'unread-dot', hidden: true }) : null
     )
   );
-  item.classList.toggle('is-active', active);
+  setNavigationState(item, active);
   item.classList.toggle('has-unread', unread);
   if (isModerator(server)) {
     item.addEventListener('contextmenu', (event) => {
@@ -636,7 +647,7 @@ function renderVoiceChannelItem(server, channel, cardIndex = 0) {
       !(state.mentions[channelKey] || 0) && isUnread(channelKey, channel.lastAt) && !active ? el('span', { class: 'pill-chip', text: 'new' }) : null
     )
   );
-  item.classList.toggle('is-active', active);
+  setNavigationState(item, active);
   if (isModerator(server)) {
     item.addEventListener('contextmenu', (event) => {
       event.preventDefault();
@@ -682,7 +693,7 @@ function renderDmList() {
       mentions ? el('span', { class: 'mention-badge', text: String(mentions) }) : null,
       el('span', { class: `presence-dot${state.online.has(user.id) ? ' online' : ''}` })
     );
-    item.classList.toggle('is-active', state.view.kind === 'dm' && state.view.dmId === dm.id);
+    setNavigationState(item, state.view.kind === 'dm' && state.view.dmId === dm.id);
     item.classList.toggle('has-unread', isUnread(channelKey, dm.lastAt));
     ui.dmList.append(item);
   }
@@ -900,20 +911,42 @@ function refreshHomeIfVisible() {
   }
 }
 
+function placeChatView(inContextPanel) {
+  if (inContextPanel) {
+    if (ui.chatView.parentElement !== ui.contextChatHost) {
+      ui.contextChatHost.append(ui.chatView);
+    }
+    return;
+  }
+  if (ui.chatView.parentElement !== ui.contentStack) {
+    ui.contentStack.insertBefore(ui.chatView, ui.voiceView);
+  }
+}
+
 function renderMainView() {
   const view = state.view;
+  const viewKinds = ['home', 'text', 'dm', 'voice'];
+  ui.appViewEl.dataset.view = view.kind;
+  for (const kind of viewKinds) {
+    ui.appViewEl.classList.toggle(`view-${kind}`, view.kind === kind);
+  }
   ui.appViewEl.classList.toggle('home-mode', view.kind === 'home');
   ui.homeView.hidden = view.kind !== 'home';
   if (view.kind === 'home') {
     renderHome();
   }
-  const chatShown = view.kind === 'text' || view.kind === 'dm' ||
-    (view.kind === 'voice' && state.voiceChatOpen);
+  const voiceContextChat = view.kind === 'voice' &&
+    state.activityPanelOpen &&
+    state.activityTab === 'chat';
+  state.voiceChatOpen = voiceContextChat;
+  placeChatView(voiceContextChat);
+  const chatShown = view.kind === 'text' || view.kind === 'dm' || voiceContextChat;
   ui.chatView.hidden = !chatShown;
   ui.voiceView.hidden = view.kind !== 'voice';
-  ui.contentStack.classList.toggle('voice-chat', view.kind === 'voice' && state.voiceChatOpen);
+  ui.contentStack.classList.remove('voice-chat');
+  ui.appViewEl.classList.toggle('context-chat-open', voiceContextChat);
   ui.voiceChatButton.hidden = view.kind !== 'voice';
-  ui.voiceChatButton.setAttribute('aria-pressed', String(state.voiceChatOpen));
+  ui.voiceChatButton.setAttribute('aria-pressed', String(voiceContextChat));
 
   // Level-2 animation: slide the pane in whenever the destination changes.
   const signature = `${view.kind}:${view.serverId || ''}:${view.channelId || view.dmId || ''}`;
@@ -929,9 +962,13 @@ function renderMainView() {
   const server = inServer ? getServer(view.serverId) : null;
   ui.invitePeopleButton.hidden = !server;
   ui.toggleMembersButton.hidden = !server;
-  ui.memberPanel.hidden = isMobile() || !state.activityPanelOpen;
-  ui.appViewEl.classList.toggle('activity-open', !isMobile() && state.activityPanelOpen);
-  ui.activityToggleButton.setAttribute('aria-pressed', String(!isMobile() && state.activityPanelOpen));
+  ui.memberPanel.hidden = !state.activityPanelOpen;
+  ui.appViewEl.classList.toggle('activity-open', state.activityPanelOpen);
+  ui.activityToggleButton.setAttribute('aria-pressed', String(state.activityPanelOpen));
+  ui.activityToggleButton.setAttribute(
+    'aria-label',
+    state.activityPanelOpen ? 'Close context panel' : 'Open context panel'
+  );
   ui.toggleMembersButton.setAttribute(
     'aria-pressed',
     String(Boolean(server && state.activityPanelOpen && state.activityTab === 'members'))
@@ -1158,27 +1195,41 @@ function renderAssistantAnalysis(mode) {
 
 function renderActivityPanel() {
   const server = currentServerForView();
+  const inVoiceRoom = state.view.kind === 'voice';
   const tabs = document.querySelectorAll('[data-activity-tab]');
+  if (state.activityTab === 'chat' && !inVoiceRoom) {
+    state.activityTab = 'activity';
+  }
   if (state.activityTab === 'members' && !server) {
     state.activityTab = 'activity';
   }
   for (const tab of tabs) {
     const key = tab.dataset.activityTab;
-    tab.hidden = key === 'members' && !server;
+    tab.hidden =
+      (key === 'chat' && !inVoiceRoom) ||
+      (key === 'members' && !server) ||
+      (key === 'assistant' && inVoiceRoom);
     tab.classList.toggle('is-active', key === state.activityTab);
-    tab.setAttribute('aria-pressed', String(key === state.activityTab));
+    tab.setAttribute('aria-selected', String(key === state.activityTab));
+    tab.tabIndex = key === state.activityTab ? 0 : -1;
   }
 
+  ui.contextChatHost.hidden = state.activityTab !== 'chat';
   ui.activityOverview.hidden = state.activityTab !== 'activity';
   ui.memberList.hidden = state.activityTab !== 'members';
   ui.assistantPanel.hidden = state.activityTab !== 'assistant';
-  ui.activityPanelTitle.textContent = state.activityTab === 'members'
-    ? 'People'
-    : state.activityTab === 'assistant'
-      ? 'Assist'
-      : 'Activity';
+  ui.activityPanelTitle.textContent = state.activityTab === 'chat'
+    ? 'Room conversation'
+    : state.activityTab === 'members'
+      ? inVoiceRoom ? 'Participants' : 'People'
+      : state.activityTab === 'assistant'
+        ? 'Assist'
+        : 'Details';
 
-  if (state.activityTab === 'activity') {
+  if (state.activityTab === 'chat') {
+    // The existing chat view is moved into this host so messages, uploads,
+    // replies, and recording keep their original event listeners and state.
+  } else if (state.activityTab === 'activity') {
     renderActivityOverview();
   } else if (state.activityTab === 'members') {
     renderMembers();
@@ -1190,6 +1241,32 @@ function renderActivityPanel() {
       ui.assistantOutput.textContent = 'Open a conversation with loaded messages to use the on-device overview.';
     }
   }
+
+  const activeVoicePane = state.activityPanelOpen &&
+    (state.activityTab === 'chat' || state.activityTab === 'members')
+    ? state.activityTab
+    : 'room';
+  for (const tab of document.querySelectorAll('[data-voice-pane]')) {
+    const active = tab.dataset.voicePane === activeVoicePane;
+    tab.classList.toggle('is-active', active);
+    tab.setAttribute('aria-pressed', String(active));
+  }
+}
+
+function openContextTab(tab) {
+  state.activityPanelOpen = true;
+  state.activityTab = tab;
+  state.voiceChatOpen = state.view.kind === 'voice' && tab === 'chat';
+  renderMainView();
+  if (state.voiceChatOpen) {
+    openChat(activeChannelKey());
+  }
+}
+
+function closeContextPanel() {
+  state.activityPanelOpen = false;
+  state.voiceChatOpen = false;
+  renderMainView();
 }
 
 function renderMembers() {
@@ -1255,6 +1332,10 @@ function setView(view) {
   state.mobilePane = view.kind === 'home' ? 'home' : 'content';
   state.spaceSwitcherOpen = false;
   state.voiceChatOpen = false;
+  state.activityPanelOpen = false;
+  if (state.activityTab === 'chat') {
+    state.activityTab = 'activity';
+  }
   closePopovers();
   cancelReply();
   stopEditing();
@@ -2382,6 +2463,14 @@ function renderVoiceTiles(channelKey, participants) {
         el('span', { class: 'voice-tile-conn', text: 'Connecting' }),
         el('span', { class: 'voice-tile-footer' }, el('span', { class: 'voice-tile-name' }))
       );
+      tile.setAttribute('role', 'button');
+      tile.setAttribute('tabindex', '0');
+      tile.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          togglePin(key);
+        }
+      });
       voiceTileEls.set(key, tile);
       ui.voiceGrid.append(tile);
     }
@@ -2390,6 +2479,11 @@ function renderVoiceTiles(channelKey, participants) {
     connBadge(tile, isLocal ? null : peer);
     tile.classList.toggle('is-pinned', state.pinned === key);
     tile.title = state.pinned === key ? 'Click to unpin' : 'Click to pin';
+    tile.setAttribute(
+      'aria-label',
+      `${state.pinned === key ? 'Unpin' : 'Pin'} ${user.name}${isLocal ? ' (you)' : ''}`
+    );
+    tile.setAttribute('aria-pressed', String(state.pinned === key));
 
     const video = tile.querySelector('video');
     const cameraOn = Boolean(media && media.video && stream && stream.getVideoTracks().some((track) => track.readyState === 'live'));
@@ -2785,19 +2879,61 @@ function openEmojiPopup(anchor, onPick) {
 // ============================================================== modals
 
 function openModal(build) {
+  modalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   ui.modalCard.replaceChildren();
   ui.modalCard.append(el('button', { class: 'icon-button modal-close', type: 'button', 'aria-label': 'Close', onclick: closeModal }, icon('i-x')));
   build(ui.modalCard);
-  ui.modalRoot.hidden = false;
-  const firstInput = ui.modalCard.querySelector('input');
-  if (firstInput) {
-    firstInput.focus();
+  const title = ui.modalCard.querySelector('h1, h2, h3');
+  if (title) {
+    title.id ||= 'roomlyModalTitle';
+    ui.modalCard.setAttribute('aria-labelledby', title.id);
+  } else {
+    ui.modalCard.removeAttribute('aria-labelledby');
   }
+  ui.modalRoot.hidden = false;
+  for (const view of [ui.authView, ui.appView]) {
+    if (!view.hidden) {
+      view.inert = true;
+    }
+  }
+  const focusable =
+    ui.modalCard.querySelector('input:not([disabled]), textarea:not([disabled]), select:not([disabled])') ||
+    ui.modalCard.querySelector('.primary-button:not([disabled])') ||
+    ui.modalCard.querySelector('button:not(.modal-close):not([disabled])') ||
+    ui.modalCard.querySelector('.modal-close');
+  focusable?.focus();
+  ui.modalCard.onkeydown = (event) => {
+    if (event.key !== 'Tab') {
+      return;
+    }
+    const items = Array.from(ui.modalCard.querySelectorAll(
+      'input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )).filter((item) => !item.hidden && item.getClientRects().length);
+    if (!items.length) {
+      event.preventDefault();
+      return;
+    }
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
 }
 
 function closeModal() {
   ui.modalRoot.hidden = true;
   ui.modalCard.replaceChildren();
+  ui.modalCard.onkeydown = null;
+  for (const view of [ui.authView, ui.appView]) {
+    view.inert = false;
+  }
+  modalReturnFocus?.focus();
+  modalReturnFocus = null;
 }
 
 function confirmModal(title, text, actionLabel, onConfirm) {
@@ -3852,7 +3988,21 @@ function showAuth() {
 }
 
 async function submitAuth(endpoint, payload, errorEl) {
+  const form = errorEl.closest('form');
+  const submitButton = form?.querySelector('button[type="submit"]');
+  const inputs = Array.from(form?.querySelectorAll('input') || []);
   errorEl.textContent = '';
+  for (const input of inputs) {
+    input.removeAttribute('aria-invalid');
+    if (input.getAttribute('aria-describedby') === errorEl.id) {
+      input.removeAttribute('aria-describedby');
+    }
+  }
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.setAttribute('aria-busy', 'true');
+    submitButton.classList.add('is-loading');
+  }
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -3869,6 +4019,17 @@ async function submitAuth(endpoint, payload, errorEl) {
     socket.connect();
   } catch (error) {
     errorEl.textContent = error.message;
+    for (const input of inputs) {
+      input.setAttribute('aria-invalid', 'true');
+      input.setAttribute('aria-describedby', errorEl.id);
+    }
+    inputs[0]?.focus();
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.removeAttribute('aria-busy');
+      submitButton.classList.remove('is-loading');
+    }
   }
 }
 
@@ -3877,11 +4038,25 @@ function wireAuthForms() {
   for (const tab of tabs) {
     tab.addEventListener('click', () => {
       for (const other of tabs) {
-        other.classList.toggle('is-active', other === tab);
+        const active = other === tab;
+        other.classList.toggle('is-active', active);
+        other.setAttribute('aria-selected', String(active));
+        other.tabIndex = active ? 0 : -1;
       }
       for (const panel of document.querySelectorAll('.auth-form')) {
         panel.hidden = panel.dataset.panel !== tab.dataset.tab;
       }
+    });
+    tab.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+        return;
+      }
+      event.preventDefault();
+      const current = Array.from(tabs).indexOf(tab);
+      const offset = event.key === 'ArrowRight' ? 1 : -1;
+      const next = tabs[(current + offset + tabs.length) % tabs.length];
+      next.focus();
+      next.click();
     });
   }
 
@@ -3942,7 +4117,7 @@ function wireUi() {
   ui.mnavChats.addEventListener('click', openRecentConversation);
   ui.mnavCalls.addEventListener('click', startAvailableRoom);
   ui.mnavSpaces.addEventListener('click', openSpacesHub);
-  ui.mnavMe.addEventListener('click', openUserSettings);
+  ui.mnavMe.addEventListener('click', () => openUserSettings('profile'));
   mobileQuery.addEventListener('change', () => {
     if (isMobile()) {
       state.activityPanelOpen = false;
@@ -3991,6 +4166,12 @@ function wireUi() {
       ui.toggleMembersButton.click();
     }
   });
+  ui.headerFaces.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      ui.headerFaces.click();
+    }
+  });
   ui.headerInviteMini.addEventListener('click', () => {
     const server = getServer(state.view.serverId);
     if (server) {
@@ -4024,22 +4205,45 @@ function wireUi() {
     }
   });
   ui.toggleMembersButton.addEventListener('click', () => {
-    state.activityPanelOpen = true;
-    state.activityTab = 'members';
-    renderMainView();
+    openContextTab('members');
   });
   ui.activityToggleButton.addEventListener('click', () => {
-    state.activityPanelOpen = !state.activityPanelOpen;
-    renderMainView();
+    if (state.activityPanelOpen) {
+      closeContextPanel();
+    } else {
+      openContextTab(state.view.kind === 'voice' ? 'chat' : 'activity');
+    }
   });
-  ui.activityCloseButton.addEventListener('click', () => {
-    state.activityPanelOpen = false;
-    renderMainView();
-  });
+  ui.activityCloseButton.addEventListener('click', closeContextPanel);
   for (const tab of document.querySelectorAll('[data-activity-tab]')) {
     tab.addEventListener('click', () => {
-      state.activityTab = tab.dataset.activityTab;
-      renderActivityPanel();
+      openContextTab(tab.dataset.activityTab);
+    });
+    tab.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+        return;
+      }
+      const visibleTabs = Array.from(document.querySelectorAll('[data-activity-tab]'))
+        .filter((candidate) => !candidate.hidden);
+      const current = visibleTabs.indexOf(tab);
+      if (current < 0) {
+        return;
+      }
+      event.preventDefault();
+      const offset = event.key === 'ArrowRight' ? 1 : -1;
+      const next = visibleTabs[(current + offset + visibleTabs.length) % visibleTabs.length];
+      next.focus();
+      next.click();
+    });
+  }
+  for (const tab of document.querySelectorAll('[data-voice-pane]')) {
+    tab.addEventListener('click', () => {
+      const pane = tab.dataset.voicePane;
+      if (pane === 'room') {
+        closeContextPanel();
+      } else {
+        openContextTab(pane);
+      }
     });
   }
   ui.assistantSummaryButton.addEventListener('click', () => renderAssistantAnalysis('summary'));
@@ -4129,10 +4333,10 @@ function wireUi() {
     });
   });
   ui.voiceChatButton.addEventListener('click', () => {
-    state.voiceChatOpen = !state.voiceChatOpen;
-    renderMainView();
-    if (state.voiceChatOpen) {
-      openChat(activeChannelKey());
+    if (state.activityPanelOpen && state.activityTab === 'chat') {
+      closeContextPanel();
+    } else {
+      openContextTab('chat');
     }
   });
   ui.voiceMsgButton.addEventListener('click', () => {
@@ -4277,10 +4481,6 @@ function wireUi() {
 
 function initFx() {
   try {
-    fx.aurora(ui.authView, { intensity: 1, blobs: 6 });
-    fx.aurora(ui.homeView, { intensity: 0.55, blobs: 5 });
-    fx.aurora(ui.voiceView, { intensity: 0.4, blobs: 4 });
-    fx.tilt(ui.homeServerCards, '.home-card-item');
     fx.speakingGlow({
       getAnalysers: () => voice.analysers,
       getTarget: (key) => {

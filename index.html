@@ -8,6 +8,7 @@
     <title>Roomly — Your place to talk</title>
     <link rel="stylesheet" href="/styles.css">
     <link rel="stylesheet" href="/refinement.css">
+    <link rel="stylesheet" href="/ui-system.css">
     <script type="module" src="/app.js"></script>
   </head>
   <body>
@@ -238,12 +239,12 @@
           </div>
 
           <nav class="auth-tabs" role="tablist">
-            <button type="button" class="is-active" data-tab="login">Sign in</button>
-            <button type="button" data-tab="register">Create account</button>
-            <button type="button" data-tab="guest">Guest</button>
+            <button id="authTabLogin" type="button" class="is-active" role="tab" aria-selected="true" aria-controls="loginForm" data-tab="login">Sign in</button>
+            <button id="authTabRegister" type="button" role="tab" aria-selected="false" aria-controls="registerForm" tabindex="-1" data-tab="register">Create account</button>
+            <button id="authTabGuest" type="button" role="tab" aria-selected="false" aria-controls="guestForm" tabindex="-1" data-tab="guest">Guest</button>
           </nav>
 
-          <form id="loginForm" class="auth-form" data-panel="login" novalidate>
+          <form id="loginForm" class="auth-form" role="tabpanel" aria-labelledby="authTabLogin" data-panel="login" novalidate>
             <label>Username
               <input id="loginUsername" name="username" type="text" autocomplete="username" maxlength="24" spellcheck="false" required>
             </label>
@@ -254,7 +255,7 @@
             <button class="primary-button" type="submit">Sign in</button>
           </form>
 
-          <form id="registerForm" class="auth-form" data-panel="register" hidden novalidate>
+          <form id="registerForm" class="auth-form" role="tabpanel" aria-labelledby="authTabRegister" data-panel="register" hidden novalidate>
             <label>Username
               <input id="regUsername" name="username" type="text" autocomplete="username" maxlength="24" spellcheck="false" placeholder="letters, numbers, dots" required>
             </label>
@@ -268,7 +269,7 @@
             <button class="primary-button" type="submit">Create account</button>
           </form>
 
-          <form id="guestForm" class="auth-form" data-panel="guest" hidden novalidate>
+          <form id="guestForm" class="auth-form" role="tabpanel" aria-labelledby="authTabGuest" data-panel="guest" hidden novalidate>
             <label>Your name
               <input id="guestName" name="name" type="text" autocomplete="nickname" maxlength="40" placeholder="How people see you" required>
             </label>
@@ -342,7 +343,7 @@
 
         <div class="side-search">
           <svg><use href="#i-search"></use></svg>
-          <input id="sideSearch" type="search" placeholder="Search Roomly" autocomplete="off">
+          <input id="sideSearch" type="search" placeholder="Search Roomly" autocomplete="off" aria-label="Search spaces, rooms, and people">
         </div>
 
         <header id="sidebarHeader" class="sidebar-header" aria-hidden="true">
@@ -353,7 +354,7 @@
         </header>
 
         <div id="sidebarScroll" class="sidebar-scroll">
-          <p class="side-label">Navigate</p>
+          <p class="side-label">Spaces</p>
           <nav id="serverRail" class="server-rail" aria-label="Spaces">
             <div class="rail-row">
               <button id="homeButton" class="rail-item rail-home is-active" type="button" title="Today" aria-label="Open today">
@@ -368,7 +369,7 @@
             <svg><use href="#i-plus"></use></svg> Create a space
           </button>
 
-          <p class="side-label">People</p>
+          <p class="side-label">Direct messages</p>
           <div id="dmPane" class="dm-pane">
             <button id="findUserButton" class="sidebar-action" type="button">
               <svg><use href="#i-search"></use></svg> Find someone by username
@@ -445,7 +446,7 @@
           <div class="main-header-text">
             <div class="mh-row">
               <strong id="channelTitle">Welcome</strong>
-              <div id="headerFaces" class="header-faces" hidden></div>
+              <div id="headerFaces" class="header-faces" role="button" tabindex="0" aria-label="Show people" hidden></div>
               <button id="headerInviteMini" class="hf-plus" type="button" title="Invite people" aria-label="Invite people" hidden>
                 <svg><use href="#i-plus"></use></svg>
               </button>
@@ -490,7 +491,7 @@
               <div id="messageScroll" class="message-scroll">
                 <div id="chatIntro" class="chat-intro"></div>
                 <button id="loadOlderButton" class="load-older" type="button" hidden>Load older messages</button>
-                <ol id="messageList" class="message-list"></ol>
+                <ol id="messageList" class="message-list" role="log" aria-label="Conversation messages" aria-live="polite" aria-relevant="additions text"></ol>
               </div>
               <div id="typingBar" class="typing-bar" aria-live="polite"></div>
               <div id="replyBar" class="reply-bar" hidden>
@@ -525,6 +526,11 @@
 
             <!-- Voice -->
             <section id="voiceView" class="voice-view" hidden aria-label="Live room">
+              <nav class="voice-mobile-tabs" aria-label="Live room sections">
+                <button class="voice-mobile-tab is-active" type="button" data-voice-pane="room" aria-pressed="true">Room</button>
+                <button class="voice-mobile-tab" type="button" data-voice-pane="chat" aria-pressed="false">Chat</button>
+                <button class="voice-mobile-tab" type="button" data-voice-pane="members" aria-pressed="false">People</button>
+              </nav>
               <div id="voicePrejoin" class="voice-prejoin">
                 <div class="voice-prejoin-card">
                   <span class="voice-prejoin-icon"><svg><use href="#i-speaker"></use></svg></span>
@@ -673,14 +679,16 @@
                 <svg><use href="#i-x"></use></svg>
               </button>
             </header>
-            <nav class="activity-tabs" aria-label="Activity panel sections">
-              <button class="activity-tab is-active" type="button" data-activity-tab="activity">Activity</button>
-              <button class="activity-tab" type="button" data-activity-tab="members">People</button>
-              <button class="activity-tab ai-tab" type="button" data-activity-tab="assistant"><svg><use href="#i-spark"></use></svg> Assist</button>
+            <nav class="activity-tabs" aria-label="Context panel sections" role="tablist">
+              <button id="contextTabChat" class="activity-tab" type="button" role="tab" aria-selected="false" aria-controls="contextChatHost" data-activity-tab="chat">Chat</button>
+              <button id="contextTabDetails" class="activity-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="activityOverview" data-activity-tab="activity">Details</button>
+              <button id="contextTabPeople" class="activity-tab" type="button" role="tab" aria-selected="false" aria-controls="memberList" data-activity-tab="members">People</button>
+              <button id="contextTabAssist" class="activity-tab ai-tab" type="button" role="tab" aria-selected="false" aria-controls="assistantPanel" data-activity-tab="assistant"><svg><use href="#i-spark"></use></svg> Assist</button>
             </nav>
-            <div id="activityOverview" class="activity-overview"></div>
-            <div id="memberList" class="activity-member-list" hidden></div>
-            <section id="assistantPanel" class="assistant-panel" hidden>
+            <div id="contextChatHost" class="context-chat-host" role="tabpanel" aria-labelledby="contextTabChat" hidden></div>
+            <div id="activityOverview" class="activity-overview" role="tabpanel" aria-labelledby="contextTabDetails"></div>
+            <div id="memberList" class="activity-member-list" role="tabpanel" aria-labelledby="contextTabPeople" hidden></div>
+            <section id="assistantPanel" class="assistant-panel" role="tabpanel" aria-labelledby="contextTabAssist" hidden>
               <div class="assistant-core"><svg><use href="#i-spark"></use></svg></div>
               <small>Roomly Assist</small>
               <h2>Catch up without scrolling</h2>

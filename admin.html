@@ -7,6 +7,7 @@
 <title>Roomly — Admin console</title>
 <link rel="stylesheet" href="/admin.css">
 <link rel="stylesheet" href="/admin-refinement.css">
+<link rel="stylesheet" href="/admin-ui-system.css">
 </head>
 <body>
 <div class="wrap">
@@ -18,33 +19,35 @@
     </div>
   </header>
 
-  <div id="gate"><h2>Platform admins only</h2><p class="muted">Sign in with a platform-admin account, then come back. <a href="/">Go to Roomly</a></p></div>
+  <main id="adminMain" aria-busy="true">
+  <div id="gate"><h2 id="gateTitle" tabindex="-1">Platform admins only</h2><p class="muted">Sign in with a platform-admin account, then come back. <a href="/">Go to Roomly</a></p></div>
 
   <div id="panel" style="display:none">
-    <h1>Instance control</h1>
+    <h1 id="adminTitle" tabindex="-1">Instance control</h1>
     <div class="cards" id="cards"></div>
 
-    <section>
+    <section aria-labelledby="accountsTitle">
       <div class="sec-head">
-        <h2>Accounts</h2>
-        <input id="userSearch" type="search" placeholder="Search name or username…">
+        <h2 id="accountsTitle">Accounts</h2>
+        <input id="userSearch" type="search" placeholder="Search name or username…" aria-label="Search accounts">
       </div>
-      <div style="overflow-x:auto"><table id="userTable">
+      <div class="table-region" role="region" tabindex="0" aria-labelledby="accountsTitle"><table id="userTable">
         <thead><tr><th>User</th><th class="hide-sm">Created</th><th>Status</th><th class="hide-sm">Owns</th><th>Actions</th></tr></thead>
         <tbody></tbody>
       </table></div>
     </section>
 
-    <section>
-      <div class="sec-head"><h2>Servers</h2></div>
-      <div style="overflow-x:auto"><table id="serverTable">
+    <section aria-labelledby="serversTitle">
+      <div class="sec-head"><h2 id="serversTitle">Servers</h2></div>
+      <div class="table-region" role="region" tabindex="0" aria-labelledby="serversTitle"><table id="serverTable">
         <thead><tr><th>Server</th><th>Owner</th><th>Members</th><th class="hide-sm">Channels</th><th>Type</th><th>Actions</th></tr></thead>
         <tbody></tbody>
       </table></div>
     </section>
   </div>
+  </main>
 </div>
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 <script src="/admin-console.js"></script>
 </body>
 </html>
