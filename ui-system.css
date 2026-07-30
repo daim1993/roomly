@@ -4595,3 +4595,427 @@ body:has(#appView.view-voice) > .voice-dock {
 #appView .occ-row {
   width: 100% !important;
 }
+
+/* ================================================================== *
+ *  Icon sizing, message rhythm, voice notes, modal scroll, spaces     *
+ * ================================================================== */
+
+/* 1 — inline icons had no intrinsic size and collapsed into dots ---- */
+:where(button, a, label, summary) > svg,
+.primary-button svg,
+.ghost-button svg,
+.side-add-main svg,
+.side-add-sub svg,
+.sidebar-action svg,
+.home-text-action svg,
+.choice-card svg,
+.menu-item svg,
+.vn-label svg,
+.voice-chip svg {
+  flex: none !important;
+  width: 17px !important;
+  height: 17px !important;
+}
+.primary-button,
+.ghost-button,
+.side-add-main,
+.side-add-sub,
+.home-live-join,
+.stop-share-button,
+.voice-prejoin-buttons > button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 9px !important;
+  white-space: nowrap !important;
+}
+/* heavy display type renders cleaner with grayscale smoothing */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* 2 — prejoin: two buttons of identical size, never wrapping -------- */
+.voice-prejoin-buttons {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+}
+.voice-prejoin-buttons > button {
+  flex: 0 0 auto !important;
+  height: 46px !important;
+  min-width: 168px !important;
+  padding: 0 18px !important;
+}
+
+/* 3 — call controls: icon and label share one optical centre -------- */
+#appView .voice-controls > .v-control {
+  display: grid !important;
+  grid-template-rows: 22px auto !important;
+  align-content: center !important;
+  justify-items: center !important;
+  gap: 6px !important;
+  padding: 0 !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  line-height: 1 !important;
+}
+#appView .voice-controls > .v-control.leave {
+  border-color: transparent !important;
+}
+#appView .voice-controls > .v-control > svg {
+  width: 20px !important;
+  height: 20px !important;
+  align-self: center !important;
+}
+#appView .voice-controls > .v-control > .vc-label {
+  align-self: center !important;
+  line-height: 1 !important;
+}
+
+/* 4 — breathing room between messages ------------------------------- */
+#appView .message-list > .msg {
+  margin-top: 10px !important;
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+}
+/* a new author starts a new visual group */
+#appView .message-list > .msg:not(.is-compact) {
+  margin-top: 22px !important;
+}
+#appView .message-list > .msg.is-compact {
+  margin-top: 9px !important;
+}
+#appView .message-list > .msg:first-child {
+  margin-top: 4px !important;
+}
+#appView .msg-content {
+  line-height: 1.55 !important;
+}
+#appView .msg-attachments {
+  margin-top: 8px !important;
+}
+
+/* 5 — voice notes: waveform player in the brand accent -------------- */
+.attachment-voice.voice-note {
+  display: inline-grid !important;
+  grid-template-columns: 42px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 12px !important;
+  width: min(340px, 100%) !important;
+  margin-top: 6px !important;
+  padding: 10px 14px 10px 10px !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 16px !important;
+  background: var(--ui-surface-raised) !important;
+}
+.voice-note audio {
+  display: none !important;
+}
+.voice-note .vn-play {
+  display: grid !important;
+  width: 42px !important;
+  height: 42px !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: var(--ui-accent) !important;
+  color: oklch(0.99 0.01 85) !important;
+  cursor: pointer;
+  place-items: center !important;
+}
+.voice-note .vn-play:hover {
+  background: var(--ui-accent-strong) !important;
+}
+.voice-note .vn-play > svg {
+  grid-area: 1 / 1 !important;
+  width: 15px !important;
+  height: 15px !important;
+}
+.voice-note .vn-play > svg:last-child,
+.voice-note.is-playing .vn-play > svg:first-child {
+  display: none !important;
+}
+.voice-note.is-playing .vn-play > svg:last-child {
+  display: block !important;
+}
+.voice-note .vn-body {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+}
+.voice-note .vn-track {
+  display: block !important;
+  width: 100% !important;
+  height: 30px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  cursor: pointer;
+}
+.voice-note .vn-bars {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  height: 30px !important;
+  gap: 2px !important;
+}
+.voice-note .vn-bar {
+  flex: 1 1 0 !important;
+  min-width: 2px !important;
+  height: var(--h, 40%) !important;
+  border-radius: 999px !important;
+  background: var(--ui-border-strong) !important;
+  transition: background-color 120ms linear, height 200ms var(--ui-ease);
+}
+.voice-note .vn-bar.is-played {
+  background: var(--ui-accent) !important;
+}
+.voice-note .vn-meta {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+}
+.voice-note .vn-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  color: var(--ui-text-muted) !important;
+  font-size: 0.6875rem !important;
+  font-weight: 750 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+}
+.voice-note .vn-label svg {
+  color: var(--ui-accent) !important;
+}
+.voice-note .vn-time {
+  color: var(--ui-text-soft) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+/* 6 — settings modal: header and tabs pinned, only the body scrolls - */
+.modal-root .modal-card.settings-card {
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  overscroll-behavior: contain !important;
+}
+.modal-root .modal-card.settings-card > h2,
+.modal-root .modal-card.settings-card > .modal-sub {
+  flex: none !important;
+  margin: 0 !important;
+  padding: 22px 24px 0 !important;
+}
+.modal-root .modal-card.settings-card > .modal-sub {
+  padding-top: 6px !important;
+}
+.modal-root .modal-card.settings-card > .modal-tabs {
+  flex: none !important;
+  margin: 16px 24px 0 !important;
+}
+.modal-root .modal-card.settings-card > .modal-close {
+  top: 18px !important;
+  right: 18px !important;
+  z-index: 4 !important;
+}
+/* every remaining child becomes the scrolling body */
+.modal-root .modal-card.settings-card > *:not(h2):not(.modal-sub):not(.modal-tabs):not(.modal-close) {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 18px 24px 22px !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  scrollbar-width: thin !important;
+}
+.modal-root .modal-card.settings-card ::-webkit-scrollbar {
+  width: 9px;
+}
+.modal-root .modal-card.settings-card ::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: var(--ui-border-strong);
+  background-clip: content-box;
+}
+
+/* 7 — spaces list: row, menu button and status chips line up -------- */
+#appView .server-rail .rail-row {
+  position: relative !important;
+  grid-template-columns: minmax(0, 1fr) 30px !important;
+  gap: 2px !important;
+}
+#appView .server-rail .rail-row > .icon-button {
+  position: static !important;
+  align-self: center !important;
+  justify-self: center !important;
+  width: 26px !important;
+  height: 26px !important;
+  margin: 0 !important;
+  opacity: 0.65;
+}
+#appView .server-rail .rail-row > .icon-button:hover {
+  opacity: 1;
+}
+#appView .server-rail .rail-item {
+  padding-right: 6px !important;
+}
+/* the guest / expiry strip sits under the row, flush with it */
+#appView .rail-servers .rail-note,
+#appView .rail-servers .guest-strip,
+#appView .server-rail .rail-row + .rail-note {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 4px 0 2px !important;
+  padding: 6px 10px !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius-sm) !important;
+  background: var(--ui-surface) !important;
+}
+
+/* guest-space banner: icon | label over expiry, flush with the rows */
+#appView .temp-banner {
+  display: grid !important;
+  grid-template-columns: 26px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  margin: 6px 0 10px !important;
+  padding: 9px 10px !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius-sm) !important;
+  background: var(--ui-surface) !important;
+}
+#appView .temp-banner > svg {
+  width: 17px !important;
+  height: 17px !important;
+  justify-self: center !important;
+  color: var(--ui-accent) !important;
+}
+#appView .temp-banner > span {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1px !important;
+  min-width: 0 !important;
+}
+#appView .temp-banner strong,
+#appView .temp-banner small {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  letter-spacing: 0.04em !important;
+}
+#appView .temp-banner strong {
+  color: var(--ui-text) !important;
+  font-size: 0.6875rem !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+}
+#appView .temp-banner small {
+  color: var(--ui-text-muted) !important;
+  font-size: 0.6875rem !important;
+  font-weight: 650 !important;
+}
+
+/* the space button fills its grid track, not the whole row (it was
+   sliding under the ⋮ menu button by a couple of pixels) */
+#appView .server-rail .rail-row > .rail-item {
+  grid-column: 1 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+#appView .server-rail .rail-row > .icon-button {
+  grid-column: 2 !important;
+}
+
+/* the shared icon-button rule carries min-width:40px, which forced the
+   space-row menu button out of its 30px track and over the row edge */
+#appView .server-rail .rail-row {
+  grid-template-columns: minmax(0, 1fr) 30px !important;
+}
+#appView .server-rail .rail-row > .icon-button,
+#appView .server-rail .rail-row > #serverMenuButton {
+  width: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+}
+#appView .server-rail .rail-row > .icon-button > svg {
+  width: 15px !important;
+  height: 15px !important;
+}
+
+/* :where() carries no specificity, so the icon sizing above lost to other
+   rules inside modals and menus — this pass has real weight. */
+body button > svg,
+body a > svg,
+body label > svg,
+body .menu-item > svg,
+body .choice-card > svg,
+body .modal-card button > svg,
+body .popover button > svg {
+  flex: none !important;
+  width: 17px !important;
+  height: 17px !important;
+}
+body .icon-button > svg,
+body .dock-control > svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+body .modal-card button,
+body .popover .menu-item {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+}
+body .modal-card button.primary-button,
+body .modal-card button.ghost-button,
+body .modal-card .modal-tabs button {
+  justify-content: center !important;
+}
+body .popover .menu-item {
+  justify-content: flex-start !important;
+  width: 100% !important;
+}
+
+/* An old "icon chip" rule (.primary-button svg / .ghost-button svg) padded
+   every button icon by 7px inside a 50%-round box. With a 17px icon and
+   border-box sizing that left a 3px content area — the icon rendered as a
+   dot. Reset the chip so the glyph fills its box. */
+body .primary-button svg,
+body .ghost-button svg,
+body .main-header .share-button svg,
+body .modal-card button svg,
+body .popover .menu-item svg,
+body .side-add-main svg,
+body .side-add-sub svg,
+body .sidebar-action svg,
+body .home-live-join svg,
+body .voice-prejoin-buttons button svg,
+body .choice-card svg {
+  width: 17px !important;
+  height: 17px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+body .choice-card svg {
+  width: 22px !important;
+  height: 22px !important;
+}

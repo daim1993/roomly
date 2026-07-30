@@ -33,8 +33,24 @@ export function el(tag, props = {}, ...children) {
   return node;
 }
 
+/** An <svg> with no viewBox of its own does not reliably scale the referenced
+    <symbol> — Chrome renders the glyph at a fraction of the box, which shows
+    up as a dot next to a label. Copy the symbol's viewBox onto every icon. */
+const viewBoxCache = new Map();
+
+function viewBoxFor(id) {
+  if (viewBoxCache.has(id)) {
+    return viewBoxCache.get(id);
+  }
+  const symbol = document.getElementById(id);
+  const box = (symbol && symbol.getAttribute('viewBox')) || '0 0 24 24';
+  viewBoxCache.set(id, box);
+  return box;
+}
+
 export function icon(id, extraClass) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', viewBoxFor(id));
   if (extraClass) {
     svg.setAttribute('class', extraClass);
   }
@@ -42,6 +58,17 @@ export function icon(id, extraClass) {
   use.setAttribute('href', `#${id}`);
   svg.append(use);
   return svg;
+}
+
+/** Same repair for the icons written straight into index.html. */
+export function normaliseIcons(root = document) {
+  for (const svg of root.querySelectorAll('svg:not([viewBox])')) {
+    const use = svg.querySelector(':scope > use');
+    const href = use && (use.getAttribute('href') || use.getAttribute('xlink:href'));
+    if (href && href.startsWith('#')) {
+      svg.setAttribute('viewBox', viewBoxFor(href.slice(1)));
+    }
+  }
 }
 
 export function initials(name) {

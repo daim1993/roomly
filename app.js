@@ -7,7 +7,7 @@
  * `ready` snapshot (sent on every [re]connect) is the source of truth.
  */
 
-import { el, icon, initials, avatarEl, formatTime, formatDay, formatFull, formatBytes, sameDay, toast, copyText, beep, debounce } from '/js/util.js';
+import { el, icon, initials, avatarEl, formatTime, formatDay, formatFull, formatBytes, sameDay, toast, copyText, beep, debounce, normaliseIcons } from '/js/util.js';
 import { EMOJI_GROUPS, QUICK_REACTIONS } from '/js/emoji.js';
 import { renderContent, contentPreview } from '/js/markdown.js';
 import { RoomlySocket } from '/js/socket.js';
@@ -1663,6 +1663,140 @@ function buildMessageContent(message) {
   return wrap;
 }
 
+/**
+ * WhatsApp-style voice note: a play button, a real waveform decoded from the
+ * recording, and a running timer. Bars fill with the brand accent as the clip
+ * plays and the whole strip is scrubbable.
+ */
+const waveformCache = new Map(); // attachment url -> number[] (0..1 per bar)
+const BAR_COUNT = 42;
+
+function buildVoiceNote(attachment) {
+  const audio = el('audio', { preload: 'metadata', src: attachment.url });
+  const playButton = el('button', {
+    class: 'vn-play', type: 'button', 'aria-label': 'Play voice message'
+  }, icon('i-play'), icon('i-pause'));
+  const bars = el('span', { class: 'vn-bars', 'aria-hidden': 'true' });
+  const barEls = [];
+  for (let index = 0; index < BAR_COUNT; index += 1) {
+    // Placeholder heights until the real peaks are decoded.
+    const bar = el('i', { class: 'vn-bar' });
+    bar.style.setProperty('--h', `${28 + ((index * 37) % 46)}%`);
+    barEls.push(bar);
+    bars.append(bar);
+  }
+  const time = el('span', { class: 'vn-time', text: '0:00' });
+  const track = el('button', {
+    class: 'vn-track', type: 'button', 'aria-label': 'Seek in the voice message'
+  }, bars);
+
+  const node = el('span', { class: 'attachment-voice voice-note' },
+    playButton,
+    el('span', { class: 'vn-body' },
+      track,
+      el('span', { class: 'vn-meta' },
+        el('span', { class: 'vn-label' }, icon('i-mic'), 'Voice message'),
+        time
+      )
+    ),
+    audio
+  );
+
+  const clock = (seconds) => {
+    if (!Number.isFinite(seconds)) {
+      return '0:00';
+    }
+    const whole = Math.max(0, Math.round(seconds));
+    return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+  };
+  const paint = () => {
+    const total = audio.duration;
+    const ratio = Number.isFinite(total) && total > 0 ? audio.currentTime / total : 0;
+    const filled = Math.round(ratio * BAR_COUNT);
+    for (let index = 0; index < barEls.length; index += 1) {
+      barEls[index].classList.toggle('is-played', index < filled);
+    }
+    time.textContent = clock(audio.currentTime > 0 ? audio.currentTime : total);
+  };
+
+  audio.addEventListener('loadedmetadata', paint);
+  audio.addEventListener('timeupdate', paint);
+  audio.addEventListener('play', () => node.classList.add('is-playing'));
+  audio.addEventListener('pause', () => node.classList.remove('is-playing'));
+  audio.addEventListener('ended', () => {
+    node.classList.remove('is-playing');
+    audio.currentTime = 0;
+    paint();
+  });
+
+  playButton.addEventListener('click', () => {
+    if (audio.paused) {
+      // Only one voice note plays at a time.
+      for (const other of document.querySelectorAll('.voice-note audio')) {
+        if (other !== audio) {
+          other.pause();
+        }
+      }
+      audio.play().catch(() => {});
+    } else {
+      audio.pause();
+    }
+  });
+  track.addEventListener('click', (event) => {
+    const box = track.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (event.clientX - box.left) / box.width));
+    if (Number.isFinite(audio.duration)) {
+      audio.currentTime = ratio * audio.duration;
+      paint();
+    }
+  });
+
+  applyWaveform(attachment.url, barEls);
+  return node;
+}
+
+/** Decode the clip once and turn it into per-bar peak heights. */
+async function applyWaveform(url, barEls) {
+  const draw = (peaks) => {
+    for (let index = 0; index < barEls.length; index += 1) {
+      const value = peaks[index] || 0;
+      barEls[index].style.setProperty('--h', `${Math.round(18 + value * 82)}%`);
+    }
+  };
+  const cached = waveformCache.get(url);
+  if (cached) {
+    draw(cached);
+    return;
+  }
+  try {
+    const response = await fetch(url);
+    const buffer = await response.arrayBuffer();
+    const context = new (window.AudioContext || window.webkitAudioContext)();
+    const decoded = await context.decodeAudioData(buffer);
+    const data = decoded.getChannelData(0);
+    const block = Math.floor(data.length / BAR_COUNT) || 1;
+    const peaks = [];
+    let loudest = 0.0001;
+    for (let index = 0; index < BAR_COUNT; index += 1) {
+      let sum = 0;
+      const start = index * block;
+      for (let offset = 0; offset < block; offset += 1) {
+        sum += Math.abs(data[start + offset] || 0);
+      }
+      const value = sum / block;
+      loudest = Math.max(loudest, value);
+      peaks.push(value);
+    }
+    // Normalise so quiet recordings still show a full-height waveform.
+    const normalised = peaks.map((value) => Math.min(1, value / loudest));
+    waveformCache.set(url, normalised);
+    draw(normalised);
+    context.close().catch(() => {});
+  } catch {
+    // Decoding is a nicety — the placeholder bars stay.
+  }
+}
+
 function buildAttachment(attachment) {
   const type = attachment.type || '';
   if (/^video\//.test(type)) {
@@ -1671,10 +1805,7 @@ function buildAttachment(attachment) {
     );
   }
   if (/^audio\//.test(type) || /^voice-message/.test(attachment.name || '')) {
-    return el('span', { class: 'attachment-voice' },
-      el('span', { class: 'voice-chip' }, icon('i-mic'), 'Voice message'),
-      el('audio', { controls: true, preload: 'metadata', src: attachment.url })
-    );
+    return buildVoiceNote(attachment);
   }
   const isImage = /^image\//.test(type);
   if (isImage) {
@@ -4090,6 +4221,7 @@ function wireAuthForms() {
 // ============================================================== wiring
 
 function wireUi() {
+  normaliseIcons(); // static markup icons need the symbol's viewBox too
   ui.homeButton.addEventListener('click', openHome);
   document.querySelector('.side-brand').addEventListener('click', (event) => {
     event.preventDefault();
