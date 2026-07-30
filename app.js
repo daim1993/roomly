@@ -3356,6 +3356,7 @@ function openMeMenu(anchor) {
 
 function openUserSettings(initialTab) {
   openModal((card) => {
+    card.classList.add('settings-card'); // fixed size across all tabs
     const tabs = { profile: 'Profile', status: 'Status', privacy: 'Privacy' };
     const error = el('p', { class: 'form-error' });
     const cancelBtn = () => el('button', { class: 'ghost-button', type: 'button', text: 'Cancel', onclick: closeModal });

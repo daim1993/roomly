@@ -3658,3 +3658,165 @@ body:has(#appView.view-voice) > .voice-dock {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ================================================================== *
+ *  QA fix layer — icon centering, sidebar rail list, header corner,  *
+ *  message hover toolbar, fixed settings modal.                      *
+ * ================================================================== */
+
+/* 1 — call-card icon frames: icon dead-center, frame exactly 42px.
+   (Old orbit layer left an oversized 78px span inside, pushing the
+   svg 38px below center and stretching the frame to 80px wide.) */
+#appView .home-call-orbit {
+  width: 42px !important;
+  height: 42px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+#appView .home-call-orbit > span {
+  position: static !important;
+  display: grid !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+  animation: none !important;
+  place-items: center !important;
+}
+#appView .home-call-orbit svg {
+  position: static !important;
+  width: 18px !important;
+  height: 18px !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+/* 2 — Spaces rail: full-width rows (icon · name · badge), sorted as a
+   clean list. Kills the old 2-up colored 126px card grid that cropped
+   names to "S…". */
+#appView .rail-servers {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+}
+#appView .server-rail .rail-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  width: 100% !important;
+  align-items: center !important;
+}
+#appView .server-rail .rail-row:first-child {
+  grid-column: auto !important;
+}
+#appView .server-rail .rail-item,
+#appView .server-rail .rail-item.is-active,
+#appView.sidebar-collapsed .server-rail .rail-item {
+  display: grid !important;
+  grid-template-columns: 28px minmax(0, 1fr) auto !important;
+  grid-template-rows: none !important;
+  align-items: center !important;
+  align-content: center !important;
+  justify-items: stretch !important;
+  width: 100% !important;
+  min-height: 42px !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 10px !important;
+  gap: 9px !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--ui-radius) !important;
+  background: transparent !important;
+  color: var(--ui-text-soft) !important;
+  transform: none !important;
+}
+#appView .server-rail .rail-item:hover {
+  background: var(--ui-surface) !important;
+  color: var(--ui-text) !important;
+  transform: none !important;
+}
+#appView .server-rail .rail-item.is-active {
+  border-color: var(--ui-border) !important;
+  background: var(--ui-surface-raised) !important;
+  color: var(--ui-text) !important;
+}
+#appView .server-rail .rail-ic {
+  align-self: center !important;
+  display: grid !important;
+  width: 28px !important;
+  height: 28px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: var(--ui-surface-raised) !important;
+  color: inherit !important;
+  place-items: center !important;
+}
+#appView .server-rail .rail-name {
+  align-self: center !important;
+  display: block !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 0.8125rem !important;
+  line-height: 1.3 !important;
+}
+
+/* 3 — top bar: search + bell + activity + avatar sit in the right
+   corner. (The old 5-track grid mis-slotted children and left the
+   last column empty, dragging the cluster toward the middle.) */
+#appView .main-header {
+  display: flex !important;
+  justify-content: flex-start !important;
+}
+#appView .main-header .main-header-text {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+#appView .main-header .global-search {
+  flex: 0 1 300px !important;
+  width: min(100%, 300px) !important;
+  margin-left: auto !important;
+}
+#appView .main-header .main-header-actions {
+  flex: 0 0 auto !important;
+  margin-left: 2px !important;
+}
+
+/* 4 — message hover toolbar: compact pill pinned to the top-right of
+   the hovered message only. (Own messages had left:4px + right:8px
+   fighting from two layers, stretching the bar across the text.) */
+#appView .msg .msg-actions,
+#appView .msg.is-own .msg-actions {
+  position: absolute !important;
+  top: -16px !important;
+  right: 10px !important;
+  left: auto !important;
+  width: max-content !important;
+  max-width: none !important;
+  z-index: 6 !important;
+}
+
+/* 5 — settings modal: one fixed size across Profile/Status/Privacy,
+   body scrolls instead of the card resizing per tab. */
+.modal-root .modal-card.settings-card {
+  width: min(calc(100vw - 32px), 540px) !important;
+  height: min(620px, 88dvh) !important;
+  max-height: min(620px, 88dvh) !important;
+  overflow-y: auto !important;
+}
+
+/* 2b — the rail wrapper itself: one clean column (old grid packed the
+   Overview row and the spaces list side-by-side at half width). */
+#appView .server-rail {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  gap: 3px !important;
+}
+#appView .server-rail > .rail-row:first-child {
+  display: none !important; /* Overview lives in the product nav above */
+}
