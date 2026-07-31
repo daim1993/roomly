@@ -5711,3 +5711,537 @@ body :is(.danger-button, .icon-button.danger:hover) {
 #appView .voice-stage.pin-max .call-timer strong {
   font-size: 1rem !important;
 }
+
+/* ================================================================== *
+ *  PREMIUM UTILITARIAN MINIMALISM — editorial document interface     *
+ *  Warm monochrome canvas, serif headlines, 1px hairlines, flat      *
+ *  surfaces, muted pastels for meaning only. Final authority layer.  *
+ * ================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* type */
+  --ed-sans: 'Geist', 'SF Pro Display', -apple-system, 'Helvetica Neue', 'Switzer', sans-serif;
+  --ed-serif: 'Instrument Serif', 'Lyon Text', 'Newsreader', 'Playfair Display', serif;
+  --ed-mono: 'Geist Mono', 'SF Mono', 'JetBrains Mono', ui-monospace, monospace;
+
+  /* warm monochrome */
+  --ui-canvas: #F7F6F3;
+  --ui-nav: #FBFBFA;
+  --ui-surface: #FFFFFF;
+  --ui-surface-raised: #F9F9F8;
+  --ui-surface-hover: #F2F1EE;
+  --ui-border: #EAEAEA;
+  --ui-border-strong: #DCDCDA;
+  --ui-text: #111111;
+  --ui-text-soft: #2F3437;
+  --ui-text-muted: #787774;
+
+  /* muted pastels — the only colour in the interface */
+  --pastel-red-bg: #FDEBEC;      --pastel-red-ink: #9F2F2D;
+  --pastel-blue-bg: #E1F3FE;     --pastel-blue-ink: #1F6C9F;
+  --pastel-green-bg: #EDF3EC;    --pastel-green-ink: #346538;
+  --pastel-yellow-bg: #FBF3DB;   --pastel-yellow-ink: #956400;
+
+  --ui-accent: #111111;
+  --ui-accent-strong: #333333;
+  --ui-accent-soft: rgba(0, 0, 0, 0.045);
+  --ui-success: var(--pastel-green-ink);
+  --ui-success-soft: var(--pastel-green-bg);
+  --ui-danger: var(--pastel-red-ink);
+  --ui-danger-hover: #8A2825;
+  --ui-warning: var(--pastel-yellow-ink);
+  --ui-info: var(--pastel-blue-ink);
+
+  --ui-focus: 0 0 0 3px rgba(17, 17, 17, 0.09);
+  --ui-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --ui-radius-sm: 4px;
+  --ui-radius: 6px;
+  --ui-radius-lg: 8px;
+  --ui-radius-panel: 12px;
+  --ui-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ui-duration: 200ms;
+  --yz-screen: #FFFFFF;
+  --yz-press: none;
+  --yz-press-down: none;
+}
+
+html, body {
+  background: var(--ui-canvas) !important;
+  color: var(--ui-text) !important;
+  font-family: var(--ed-sans) !important;
+  line-height: 1.6;
+}
+
+/* ---- typography: editorial serif headings, sans everywhere else --- */
+body :is(.auth-copy h1, .home-intro h2, .messages-head-text h2,
+  .voice-prejoin h2, #chatIntro h3, .chat-hero h3, .chat-empty h3,
+  .modal-card > h2, .modal-card > h3, .auth-card h2, .messages-empty h3,
+  .home-spaces-heading h3, .splash-card h1) {
+  font-family: var(--ed-serif) !important;
+  font-weight: 400 !important;
+  font-style: normal !important;
+  letter-spacing: -0.03em !important;
+  line-height: 1.1 !important;
+  text-transform: none !important;
+  color: var(--ui-text) !important;
+}
+body .auth-copy h1 { font-size: clamp(2.6rem, 5.2vw, 4.2rem) !important; }
+body .home-intro h2,
+body .messages-head-text h2 { font-size: clamp(2rem, 3.6vw, 3rem) !important; }
+body #chatIntro h3 { font-size: clamp(1.6rem, 2.6vw, 2.2rem) !important; }
+body .modal-card > h2 { font-size: 1.375rem !important; }
+
+/* meta labels: mono, small, wide */
+body :is(.side-label, .sidebar-label, .member-group-label, .home-card-index,
+  .home-eyebrow, .call-timer > span, .auth-copy .eyebrow, .messages-head-text p,
+  .home-panel-heading small, .vn-label, .modal-form label, .auth-form label) {
+  font-family: var(--ed-mono) !important;
+  font-size: 0.6875rem !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  color: var(--ui-text-muted) !important;
+}
+body :is(code, pre, kbd, .msg-time, .mr-time, .call-timer strong, .vn-time,
+  .invite-link-box code) {
+  font-family: var(--ed-mono) !important;
+}
+body kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid var(--ui-border);
+  border-radius: 4px;
+  background: #F7F6F3;
+  font-size: 0.75rem;
+  color: var(--ui-text-soft);
+}
+body .msg-content { line-height: 1.6 !important; color: var(--ui-text-soft) !important; }
+
+/* ---- surfaces: flat, hairline-bordered, crisp radii --------------- */
+body :is(.sidebar, .main-pane, .member-panel, .activity-panel) {
+  background: var(--ui-nav) !important;
+  border-color: var(--ui-border) !important;
+  box-shadow: none !important;
+}
+body :is(.home-call-card, .home-live-panel, .home-recent-panel, .home-card-item,
+  .voice-tile, .modal-card, .auth-card, .popover, .composer, .messages-search,
+  .attachment-voice, .temp-banner, .side-search, .global-search, .emoji-popup,
+  .mention-popup, .voice-dock, .home-live-room, .screen-stage, #voiceStage,
+  .voice-prejoin > div, .invite-link-box) {
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius-panel) !important;
+  background: var(--ui-surface) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+body :is(.home-call-card, .home-live-panel, .home-recent-panel) {
+  padding: 28px !important;
+}
+body .home-card-item { padding: 24px !important; }
+body .modal-card { padding: 28px !important; }
+body .modal-root .modal-card.settings-card { padding: 0 !important; }
+
+/* cards lift with an almost-invisible shadow, never a colour change */
+body :is(.home-call-card, .home-card-item, .messages-row, .home-recent-row):hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+  background: var(--ui-surface) !important;
+}
+
+/* ---- controls ----------------------------------------------------- */
+body :is(.primary-button, .side-add-main, .home-call-action.home-start-call,
+  #voiceJoinButton, .messages-head .primary-button, .danger-button) {
+  border: 1px solid #111111 !important;
+  border-radius: var(--ui-radius) !important;
+  background: #111111 !important;
+  color: #FFFFFF !important;
+  font-family: var(--ed-sans) !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  box-shadow: none !important;
+  transition: background-color var(--ui-duration) var(--ui-ease),
+    transform 120ms var(--ui-ease);
+}
+body :is(.primary-button, .side-add-main, #voiceJoinButton):hover {
+  background: #333333 !important;
+  border-color: #333333 !important;
+  transform: none !important;
+}
+body :is(.primary-button, .side-add-main, #voiceJoinButton, .ghost-button,
+  .icon-button, .v-control, .dock-control):active {
+  transform: scale(0.98) !important;
+}
+body :is(.primary-button, .side-add-main, #voiceJoinButton) svg {
+  color: #FFFFFF !important;
+}
+body :is(.ghost-button, .side-add-sub, .home-call-action, .home-live-join,
+  .home-panel-heading > button, .icon-button, .v-control, .dock-control,
+  .modal-close, .vn-play, .sidebar-action) {
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius) !important;
+  background: var(--ui-surface) !important;
+  color: var(--ui-text) !important;
+  box-shadow: none !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+body :is(.ghost-button, .side-add-sub, .home-call-action, .home-live-join,
+  .home-panel-heading > button, .icon-button, .v-control, .dock-control):hover {
+  border-color: var(--ui-border-strong) !important;
+  background: var(--ui-surface-hover) !important;
+}
+body .vn-play {
+  border-radius: 50% !important;
+  background: #111111 !important;
+  border-color: #111111 !important;
+  color: #FFFFFF !important;
+}
+body .v-control.leave {
+  border-color: var(--pastel-red-ink) !important;
+  background: var(--pastel-red-bg) !important;
+  color: var(--pastel-red-ink) !important;
+}
+body .v-control .vc-label {
+  font-family: var(--ed-mono) !important;
+  letter-spacing: 0.05em !important;
+}
+body :is(input, textarea, select) {
+  font-family: var(--ed-sans) !important;
+}
+body :is(.modal-root .modal-card, .auth-card) :is(input, textarea, select) {
+  border-radius: var(--ui-radius) !important;
+  background: var(--ui-surface) !important;
+  color: var(--ui-text) !important;
+}
+body :is(.modal-root .modal-card, .auth-card) :is(input, textarea, select):focus,
+body :is(.side-search, .global-search, .composer, .messages-search):focus-within {
+  border-color: #111111 !important;
+  box-shadow: var(--ui-focus) !important;
+}
+body :is(.composer .send-button, #composerSend) {
+  border-radius: var(--ui-radius) !important;
+  background: #111111 !important;
+  color: #FFFFFF !important;
+}
+
+/* ---- tags and status badges: pastel pills ------------------------- */
+body :is(.pill-chip, .mr-badge, .rail-badge, .mnav-badge, .product-nav-badge,
+  .guest-chip, .role-chip) {
+  border: 0 !important;
+  border-radius: 9999px !important;
+  padding: 2px 9px !important;
+  background: var(--ui-surface-hover) !important;
+  color: var(--ui-text-muted) !important;
+  font-family: var(--ed-mono) !important;
+  font-size: 0.6875rem !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+}
+body :is(.pill-chip.live, .channel-live, .voice-dock-status) {
+  background: var(--pastel-green-bg) !important;
+  color: var(--pastel-green-ink) !important;
+}
+body :is(.pill-chip.mention-badge, .mnav-badge, .product-nav-badge, .rail-badge) {
+  background: var(--pastel-yellow-bg) !important;
+  color: var(--pastel-yellow-ink) !important;
+}
+body .mr-badge {
+  background: var(--pastel-blue-bg) !important;
+  color: var(--pastel-blue-ink) !important;
+}
+body :is(.pill-chip.alert, .tile-muted) {
+  background: var(--pastel-red-bg) !important;
+  color: var(--pastel-red-ink) !important;
+}
+body .tile-muted { background: transparent !important; }
+body :is(.mr-dot, .presence-dot.online, .unread-dot) {
+  background: var(--pastel-green-ink) !important;
+}
+
+/* ---- navigation: text-first, one hairline marker ------------------ */
+body .product-nav-item {
+  border-radius: var(--ui-radius) !important;
+  background: transparent !important;
+  color: var(--ui-text-muted) !important;
+  font-weight: 500 !important;
+}
+body .product-nav-item:hover { background: var(--ui-surface-hover) !important; color: var(--ui-text) !important; }
+body .product-nav-item.is-active {
+  background: var(--ui-surface) !important;
+  border: 1px solid var(--ui-border) !important;
+  color: var(--ui-text) !important;
+}
+body .product-nav-item.is-active .product-nav-icon,
+body #appView .server-rail .rail-item.is-active .rail-ic {
+  color: var(--ui-text) !important;
+}
+body #appView :is(.rail-item, .channel-item, .dm-item, .messages-row, .occ-row, .member-row) {
+  border-radius: var(--ui-radius) !important;
+  color: var(--ui-text-soft) !important;
+}
+body #appView :is(.rail-item, .channel-item, .dm-item):hover {
+  background: var(--ui-surface-hover) !important;
+  color: var(--ui-text) !important;
+}
+body #appView :is(.rail-item.is-active, .channel-item.is-active, .dm-item.is-active) {
+  border: 1px solid var(--ui-border) !important;
+  background: var(--ui-surface) !important;
+  color: var(--ui-text) !important;
+}
+body #appView :is(.rail-item.is-active, .channel-item.is-active, .dm-item.is-active)::before {
+  background: #111111 !important;
+}
+/* space icons: pastel tiles, one hue each, never saturated */
+body #appView .server-rail .rail-ic,
+body #appView .home-card-item .hc-icon,
+body #appView .ch-icon {
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius) !important;
+  background: var(--ui-surface-raised) !important;
+  color: var(--ui-text-soft) !important;
+}
+body #appView .server-rail .rail-row:nth-child(4n + 1) .rail-item .rail-ic { background: var(--pastel-blue-bg) !important; color: var(--pastel-blue-ink) !important; }
+body #appView .server-rail .rail-row:nth-child(4n + 2) .rail-item .rail-ic { background: var(--pastel-green-bg) !important; color: var(--pastel-green-ink) !important; }
+body #appView .server-rail .rail-row:nth-child(4n + 3) .rail-item .rail-ic { background: var(--pastel-yellow-bg) !important; color: var(--pastel-yellow-ink) !important; }
+body #appView .server-rail .rail-row:nth-child(4n + 4) .rail-item .rail-ic { background: var(--pastel-red-bg) !important; color: var(--pastel-red-ink) !important; }
+
+/* ---- avatars: flat pastel discs, no gradients --------------------- */
+body #appView .avatar,
+body .modal-root .avatar,
+body .popover .avatar {
+  border: 1px solid var(--ui-border) !important;
+  background: var(--pastel-blue-bg) !important;
+  color: var(--pastel-blue-ink) !important;
+  font-family: var(--ed-mono) !important;
+  font-weight: 500 !important;
+  text-shadow: none !important;
+}
+body .avatar.c2, body .avatar.c6 { background: var(--pastel-green-bg) !important; color: var(--pastel-green-ink) !important; }
+body .avatar.c3, body .avatar.c7 { background: var(--pastel-yellow-bg) !important; color: var(--pastel-yellow-ink) !important; }
+body .avatar.c4, body .avatar.c8 { background: var(--pastel-red-bg) !important; color: var(--pastel-red-ink) !important; }
+
+/* ---- call view: a document, not a device -------------------------- */
+body #appView #voiceStage,
+body #appView .voice-stage.pin-max {
+  background: var(--ui-surface) !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius-panel) !important;
+}
+body #appView .voice-tile {
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  background: var(--ui-surface-raised) !important;
+}
+body #appView .voice-tile.is-speaking {
+  border-color: var(--pastel-green-ink) !important;
+  box-shadow: none !important;
+}
+body #appView .voice-tile.is-pinned {
+  border-color: #111111 !important;
+  box-shadow: none !important;
+}
+body #appView .voice-tile video,
+body #appView .screen-stage video { background: #F2F1EE !important; }
+body #appView .voice-tile-footer .voice-tile-name,
+body #appView .screen-label,
+body #appView .voice-stage.pin-max .call-timer {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid var(--ui-border) !important;
+  color: var(--ui-text) !important;
+}
+body #appView .voice-stage.pin-max .unpin-button {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid var(--ui-border) !important;
+  color: var(--ui-text) !important;
+}
+/* the speaker-grille texture belongs to the old hardware theme */
+body .voice-controls::before,
+body .voice-controls::after { display: none !important; }
+body .voice-tile-conn {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid var(--ui-border) !important;
+  color: var(--ui-text-muted) !important;
+}
+body .voice-tile.is-failed .voice-tile-conn {
+  background: var(--pastel-red-bg) !important;
+  color: var(--pastel-red-ink) !important;
+}
+body .voice-tile-retry {
+  border: 1px solid #111111 !important;
+  background: #111111 !important;
+  color: #FFFFFF !important;
+  border-radius: var(--ui-radius-sm) !important;
+}
+body .vn-bar { background: var(--ui-border-strong) !important; }
+body .vn-bar.is-played { background: #111111 !important; }
+
+/* ---- messages + chat ---------------------------------------------- */
+body #appView .messages-row.is-online .avatar {
+  box-shadow: 0 0 0 2px var(--ui-nav), 0 0 0 3px var(--pastel-green-ink) !important;
+}
+body #appView .msg-actions {
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius) !important;
+  background: var(--ui-surface) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+body #appView .msg.is-mention {
+  border-left: 2px solid var(--pastel-yellow-ink) !important;
+  background: var(--pastel-yellow-bg) !important;
+}
+body #appView .reaction-chip {
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 9999px !important;
+  background: var(--ui-surface) !important;
+  color: var(--ui-text-soft) !important;
+}
+body #appView .reaction-chip.is-mine {
+  border-color: #111111 !important;
+  background: var(--ui-surface-hover) !important;
+  color: var(--ui-text) !important;
+}
+
+/* ---- kill every gradient, glow and heavy shadow from older layers -- */
+body :is(#homeGreeting, .auth-copy h1, .home-intro h2) {
+  background: none !important;
+  -webkit-background-clip: border-box !important;
+  background-clip: border-box !important;
+  -webkit-text-fill-color: currentColor !important;
+  animation: none !important;
+}
+body .orb,
+body .splash-view .orb,
+body .home-call-orbit::before,
+body .home-call-orbit::after { display: none !important; }
+body *:not(.vn-bar) {
+  text-shadow: none !important;
+}
+
+/* ---- macro whitespace --------------------------------------------- */
+body #appView .home-shell { gap: 22px !important; }
+body #appView .home-view,
+body #appView .messages-view { padding: 32px clamp(20px, 4vw, 44px) 36px !important; }
+body #appView .home-intro { margin-bottom: 6px !important; }
+body .main-header { background: var(--ui-nav) !important; }
+
+/* ---- scroll-entry motion ------------------------------------------ */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(12px);
+  will-change: transform, opacity;
+}
+[data-reveal].is-revealed {
+  opacity: 1;
+  transform: none;
+  transition: opacity 600ms var(--ui-ease), transform 600ms var(--ui-ease);
+  transition-delay: calc(var(--index, 0) * 80ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] { opacity: 1; transform: none; }
+  [data-reveal].is-revealed { transition: none; }
+}
+
+/* ---- protocol corrections ----------------------------------------- */
+/* meta labels must beat the earlier #appView-scoped rules */
+body #appView :is(.side-label, .sidebar-label, .member-group-label,
+  .home-card-index, .home-eyebrow, .call-timer > span, .messages-head-text p,
+  .home-panel-heading small, .vn-label),
+body .modal-root .modal-card :is(label, .modal-form label),
+body .auth-card .auth-form label {
+  font-family: var(--ed-mono) !important;
+  font-size: 0.6875rem !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  color: var(--ui-text-muted) !important;
+}
+
+/* no container keeps a radius above the 12px ceiling */
+body :is(.side-profile, .side-add-card, .home-shell, .voice-dock,
+  .messages-search, .side-search, .global-search, .auth-card, .splash-card,
+  .member-panel, .activity-panel, .voice-prejoin, .screen-stage,
+  .attachment-voice, .home-live-room, .composer) {
+  border-radius: var(--ui-radius-panel) !important;
+}
+body #appView .voice-tile { border-radius: var(--ui-radius-lg) !important; }
+
+/* every remaining shadow is ultra-diffuse or absent */
+body :is(.product-nav-item, .rail-item, .channel-item, .dm-item, .messages-row,
+  .icon-button, .v-control, .dock-control, .primary-button, .ghost-button,
+  .side-add-main, .side-add-sub, .voice-dock, .sidebar, .main-pane,
+  .home-call-card, .home-live-panel, .home-recent-panel, .home-card-item) {
+  box-shadow: none !important;
+}
+body :is(.product-nav-item, .rail-item, .channel-item, .dm-item):focus-visible,
+body :is(.primary-button, .ghost-button, .icon-button):focus-visible {
+  box-shadow: var(--ui-focus) !important;
+}
+body :is(.modal-card, .popover, .emoji-popup, .mention-popup) {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* leave keeps the pale-red pastel type — the old brand rule set it black */
+body #appView .v-control.leave,
+body #appView .v-control.leave svg,
+body #appView .v-control.leave .vc-label {
+  color: var(--pastel-red-ink) !important;
+}
+/* dark CTAs keep white type despite the earlier brand-black rule */
+body :is(.primary-button, .side-add-main, .home-call-action.home-start-call,
+  #voiceJoinButton, .messages-head .primary-button, .vn-play,
+  .composer .send-button, #composerSend, .voice-tile-retry),
+body :is(.primary-button, .side-add-main, .home-call-action.home-start-call,
+  #voiceJoinButton, .messages-head .primary-button, .vn-play,
+  .composer .send-button, #composerSend) svg {
+  color: #FFFFFF !important;
+}
+
+/* the sidebar profile card kept a 16px radius from an older layer */
+body #appView .sidebar .side-profile,
+body .side-profile {
+  border-radius: var(--ui-radius-panel) !important;
+}
+
+/* the content stack kept the old dark canvas, hiding dark type on dark */
+body #appView .content-stack,
+body #appView .main-pane,
+body #appView #workspace,
+body #appView .home-view,
+body #appView .messages-view,
+body #appView .chat-view,
+body #appView .voice-view,
+body #appView .message-scroll,
+body #appView .canvas-scrim {
+  background: var(--ui-canvas) !important;
+}
+body #appView .message-scroll,
+body #appView .chat-view {
+  background: var(--ui-nav) !important;
+}
+body #appView .msg:hover {
+  background: var(--ui-surface-hover) !important;
+}
+body #appView .msg-author { color: var(--ui-text) !important; }
+body #appView :is(.msg-time, .msg-hover-time, .mr-time) { color: var(--ui-text-muted) !important; }
+body #appView .home-view :is(h2, h3, strong, b) { color: var(--ui-text) !important; }
+body #appView :is(.home-recent-panel, .home-live-panel) :is(h3, strong, b) { color: var(--ui-text) !important; }
+body #appView :is(.messages-empty h3, .home-empty h3) { color: var(--ui-text) !important; }
+body #appView :is(.home-live-copy strong, .home-recent-row strong) { color: var(--ui-text) !important; }
+
+/* card titles kept a dim colour from the dark theme */
+body #appView :is(.hc-name, .rail-name, .channel-name, .dm-name, .mr-name,
+  .occ-name, .member-name, .voice-tile-name, .home-live-copy strong) {
+  color: var(--ui-text) !important;
+}
+body #appView :is(.hc-pills .pill-chip, .home-live-copy small,
+  .home-recent-row small, .mr-preview) {
+  color: var(--ui-text-muted) !important;
+}
+body #appView .home-card-item .hc-arrow {
+  border: 1px solid var(--ui-border) !important;
+  background: var(--ui-surface) !important;
+  color: var(--ui-text-soft) !important;
+}

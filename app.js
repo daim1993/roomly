@@ -912,6 +912,45 @@ function renderHome() {
   }
 }
 
+// ------------------------------------------------------ scroll entry motion
+// Major blocks fade up as they enter the viewport, cascading 80ms apart.
+// IntersectionObserver only — no scroll listeners, no layout-animating props.
+const REVEAL_SELECTOR = [
+  '.home-call-card', '.home-live-panel', '.home-recent-panel', '.home-card-item',
+  '.messages-row', '.messages-head', '.messages-search', '.home-intro',
+  '.home-spaces-heading', '.voice-prejoin > div'
+].join(', ');
+
+let revealObserver = null;
+
+function revealOnScroll(root = document) {
+  if (!('IntersectionObserver' in window)) {
+    return;
+  }
+  if (!revealObserver) {
+    revealObserver = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-revealed');
+          revealObserver.unobserve(entry.target);
+        }
+      }
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.06 });
+  }
+  const groups = new Map();
+  for (const node of root.querySelectorAll(REVEAL_SELECTOR)) {
+    if (node.dataset.reveal) {
+      continue;
+    }
+    node.dataset.reveal = '';
+    const parent = node.parentElement;
+    const index = groups.get(parent) || 0;
+    groups.set(parent, index + 1);
+    node.style.setProperty('--index', String(Math.min(index, 6)));
+    revealObserver.observe(node);
+  }
+}
+
 function refreshHomeIfVisible() {
   if (state.view.kind === 'home') {
     renderHome();
@@ -946,6 +985,7 @@ function renderMainView() {
   if (view.kind === 'messages') {
     renderMessages();
   }
+  requestAnimationFrame(() => revealOnScroll());
   const voiceContextChat = view.kind === 'voice' &&
     state.activityPanelOpen &&
     state.activityTab === 'chat';
@@ -1459,6 +1499,7 @@ function renderMessages() {
     }
     ui.messagesList.append(item);
   }
+  requestAnimationFrame(() => revealOnScroll(ui.messagesList));
 }
 
 function openRecentConversation() {
