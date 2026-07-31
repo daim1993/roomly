@@ -5489,3 +5489,225 @@ body .modal-card > button.modal-close {
 #appView .sidebar-label-row:has(+ div:empty) {
   display: none !important;
 }
+
+/* ================================================================== *
+ *  Brand palette                                                     *
+ *  Orange #F57835 · Green #0F9855 · Blue #4081EC · Red #D44235 ·     *
+ *  Yellow #ECAE00 · Grey #F0F0F0 · White #FFFFFF · Black #000000     *
+ *  Applied as a dark theme: a neutral ramp off pure black, with the  *
+ *  brand colours reserved for meaning.                               *
+ * ================================================================== */
+
+:root {
+  /* brand */
+  --brand-orange: #F57835;
+  --brand-green: #0F9855;
+  --brand-blue: #4081EC;
+  --brand-red: #D44235;
+  --brand-yellow: #ECAE00;
+  --brand-grey: #F0F0F0;
+  --brand-white: #FFFFFF;
+  --brand-black: #000000;
+
+  /* neutral ramp: pure black lifted just enough to separate surfaces */
+  --ui-canvas: #0A0A0A;
+  --ui-nav: #101010;
+  --ui-surface: #161616;
+  --ui-surface-raised: #1E1E1E;
+  --ui-surface-hover: #272727;
+  --ui-border: #2E2E2E;
+  --ui-border-strong: #3E3E3E;
+  --ui-text: var(--brand-white);
+  --ui-text-soft: #B9B9B9;
+  --ui-text-muted: #8C8C8C;
+
+  /* meaning */
+  --ui-accent: var(--brand-orange);
+  --ui-accent-strong: #FF8C4D;
+  --ui-accent-soft: rgba(245, 120, 53, 0.16);
+  --ui-success: var(--brand-green);
+  --ui-success-soft: rgba(15, 152, 85, 0.18);
+  --ui-danger: var(--brand-red);
+  --ui-danger-hover: #E5533F;
+  --ui-warning: var(--brand-yellow);
+  --ui-info: var(--brand-blue);
+  --ui-focus: 0 0 0 3px rgba(245, 120, 53, 0.32);
+  --ui-shadow: 0 24px 72px rgba(0, 0, 0, 0.62);
+  --yz-screen: #060606;
+  --yz-press: 0 3px 0 #000000, 0 10px 24px rgba(0, 0, 0, 0.55);
+  --yz-press-down: 0 1px 0 #000000;
+}
+
+/* The brand sheet sets dark type on the orange swatch and white type on
+   green/blue/red/yellow — that is also the higher-contrast pairing. */
+body :is(.primary-button, .side-add-main, .v-control.leave,
+  .home-call-action.home-start-call, #voiceJoinButton, .vn-play, .mr-badge,
+  .messages-head .primary-button, .composer .send-button, #composerSend) {
+  color: var(--brand-black) !important;
+}
+body :is(.primary-button, .side-add-main, .v-control.leave,
+  .home-call-action.home-start-call, #voiceJoinButton, .vn-play,
+  .messages-head .primary-button, .composer .send-button, #composerSend) svg {
+  color: var(--brand-black) !important;
+}
+body .composer .send-button,
+body #composerSend {
+  background: var(--brand-orange) !important;
+}
+body :is(.danger-button, .icon-button.danger:hover) {
+  color: var(--brand-white) !important;
+}
+
+/* live / connected states carry the brand green */
+#appView .voice-dock-status,
+#appView .pill-chip.live,
+#appView .home-live-icon,
+#appView .presence-dot.online,
+#appView .messages-row.is-online .avatar {
+  color: var(--brand-green) !important;
+}
+#appView .presence-dot.online {
+  background: var(--brand-green) !important;
+}
+#appView .messages-row.is-online .avatar {
+  box-shadow: 0 0 0 2px var(--ui-canvas), 0 0 0 4px var(--brand-green) !important;
+}
+#appView .voice-tile.is-speaking {
+  border-color: var(--brand-green) !important;
+  box-shadow: 0 0 0 2px var(--ui-success-soft), 0 0 26px rgba(15, 152, 85, 0.28) !important;
+}
+/* destructive actions carry the brand red */
+#appView :is(.icon-button.danger, .tile-muted, .danger-button),
+#appView .voice-tile-name .tile-muted {
+  color: var(--brand-red) !important;
+}
+.danger-button {
+  background: var(--brand-red) !important;
+  color: var(--brand-white) !important;
+}
+/* mentions use yellow so they read apart from unread orange */
+#appView .pill-chip.mention-badge,
+#appView .msg.is-mention {
+  border-color: var(--brand-yellow) !important;
+}
+#appView .pill-chip.mention-badge {
+  background: rgba(236, 174, 0, 0.18) !important;
+  color: var(--brand-yellow) !important;
+}
+
+/* space icons cycle the four brand hues instead of muted pastels */
+#appView .server-rail .rail-row:nth-child(4n + 1) .rail-item .rail-ic { background: rgba(64, 129, 236, 0.24) !important; color: #8FB4F5 !important; }
+#appView .server-rail .rail-row:nth-child(4n + 2) .rail-item .rail-ic { background: rgba(15, 152, 85, 0.24) !important; color: #5FC898 !important; }
+#appView .server-rail .rail-row:nth-child(4n + 3) .rail-item .rail-ic { background: rgba(236, 174, 0, 0.22) !important; color: #F0C64D !important; }
+#appView .server-rail .rail-row:nth-child(4n + 4) .rail-item .rail-ic { background: rgba(245, 120, 53, 0.24) !important; color: #F79E6D !important; }
+#appView .server-rail .rail-item.is-active .rail-ic {
+  background: var(--ui-success-soft) !important;
+  color: var(--brand-green) !important;
+}
+
+/* ================================================================== *
+ *  Pinned participant stays inside the call panel                    *
+ *  It used to jump to position:fixed and cover the whole app,        *
+ *  spilling past the panel's border and rounded corners.             *
+ * ================================================================== */
+#appView .voice-stage.pin-max {
+  position: relative !important;
+  inset: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  z-index: 1 !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 18px !important;
+  gap: 12px !important;
+  border: 1px solid var(--ui-border) !important;
+  border-radius: var(--ui-radius-panel) !important;
+  background: var(--yz-screen) !important;
+  overflow: hidden !important;
+}
+/* the pinned video fills the stage but stays clipped by its corners */
+#appView .voice-stage.pin-max .screen-stage {
+  position: relative !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+}
+#appView .voice-stage.pin-max .screen-stage video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  background: #000000 !important;
+}
+#appView .voice-stage.pin-max .voice-controls {
+  flex: none !important;
+  padding-bottom: 4px !important;
+}
+/* the unpin control rides the stage's own corner */
+#appView .voice-stage.pin-max .unpin-button {
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  z-index: 3 !important;
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 10px !important;
+  background: rgba(0, 0, 0, 0.68) !important;
+  color: var(--brand-white) !important;
+}
+#appView .voice-tile.is-pinned {
+  border-color: var(--brand-orange) !important;
+  box-shadow: 0 0 0 2px var(--ui-accent-soft) !important;
+}
+
+/* the call timer floats over the grid — it must never eat a tile click */
+#appView .call-timer {
+  pointer-events: none !important;
+}
+
+/* The pinned stage was growing past the panel: the 164px filmstrip row was
+   added on top of a stage that already filled the pane. Make it a strict
+   column that never exceeds its own box. */
+#appView .voice-stage.pin-max {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+}
+#appView .voice-stage.pin-max > * {
+  min-height: 0 !important;
+}
+#appView .voice-stage.pin-max .screen-stage {
+  flex: 1 1 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+#appView .voice-stage.pin-max .voice-grid {
+  flex: 0 0 auto !important;
+  height: clamp(96px, 18vh, 150px) !important;
+  min-height: 0 !important;
+  max-height: 150px !important;
+}
+#appView .voice-stage.pin-max .voice-controls {
+  flex: 0 0 auto !important;
+}
+
+/* when pinned, the timer moves to the opposite corner so it never sits
+   underneath the unpin control */
+#appView .voice-stage.pin-max .call-timer {
+  position: absolute !important;
+  top: 26px !important;
+  left: 28px !important;
+  right: auto !important;
+  z-index: 3 !important;
+  padding: 6px 10px !important;
+  border-radius: 10px !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+}
+#appView .voice-stage.pin-max .call-timer strong {
+  font-size: 1rem !important;
+}
