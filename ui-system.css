@@ -6245,3 +6245,752 @@ body #appView .home-card-item .hc-arrow {
   background: var(--ui-surface) !important;
   color: var(--ui-text-soft) !important;
 }
+
+/* ================================================================== *
+ *  STICKER-SHEET BENTO — final authority layer                       *
+ *  True-black canvas, chunky rounded cards in cream / butter-yellow  *
+ *  / sage / coral, Anton display type, mono meta, asterisk + barcode *
+ *  + circled-arrow sticker details. Splash to smallest chip.        *
+ * ================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* sticker palette */
+  --st-black: #0B0B0B;
+  --st-ink: #131313;
+  --st-cream: #F2E7C4;
+  --st-yellow: #F5CD2F;
+  --st-sage: #BFD9BE;
+  --st-coral: #E57048;
+  --st-white: #FFFFFF;
+  --st-card-ink: #141210;
+  --st-card-muted: #57513E;
+
+  --sk-display: 'Anton', 'Arial Narrow', Impact, sans-serif;
+  --sk-sans: 'Space Grotesk', 'Helvetica Neue', sans-serif;
+  --sk-mono: 'Space Mono', ui-monospace, monospace;
+
+  --ui-canvas: var(--st-black);
+  --ui-nav: var(--st-black);
+  --ui-surface: #171717;
+  --ui-surface-raised: #1F1F1F;
+  --ui-surface-hover: #262626;
+  --ui-border: #2A2A2A;
+  --ui-border-strong: #3A3A3A;
+  --ui-text: var(--st-cream);
+  --ui-text-soft: #CFC6A8;
+  --ui-text-muted: #8F8A78;
+
+  --ui-accent: var(--st-yellow);
+  --ui-accent-strong: #FFDD55;
+  --ui-accent-soft: rgba(245, 205, 47, 0.16);
+  --ui-success: var(--st-sage);
+  --ui-success-soft: rgba(191, 217, 190, 0.16);
+  --ui-danger: var(--st-coral);
+  --ui-danger-hover: #F08055;
+  --ui-warning: var(--st-yellow);
+  --ui-info: var(--st-sage);
+  --ui-focus: 0 0 0 3px rgba(245, 205, 47, 0.4);
+  --ui-shadow: 0 22px 60px rgba(0, 0, 0, 0.6);
+
+  --ui-radius-sm: 12px;
+  --ui-radius: 16px;
+  --ui-radius-lg: 22px;
+  --ui-radius-panel: 28px;
+  --yz-screen: var(--st-ink);
+}
+
+html, body {
+  background: var(--st-black) !important;
+  color: var(--st-cream) !important;
+  font-family: var(--sk-sans) !important;
+}
+
+/* ---- display type: Anton everywhere a headline lives -------------- */
+body :is(.auth-copy h1, .home-intro h2, .messages-head-text h2,
+  .voice-prejoin h2, #chatIntro h3, .chat-hero h3, .chat-empty h3,
+  .modal-card > h2, .modal-card > h3, .auth-card h2, .messages-empty h3,
+  .home-spaces-heading h3, .splash-card h1, .home-call-copy strong) {
+  font-family: var(--sk-display) !important;
+  font-weight: 400 !important;
+  font-style: normal !important;
+  letter-spacing: 0.01em !important;
+  line-height: 0.98 !important;
+  text-transform: uppercase !important;
+}
+body .auth-copy h1 { font-size: clamp(3rem, 6.4vw, 5.4rem) !important; }
+body :is(.home-intro h2, .messages-head-text h2) { font-size: clamp(2.4rem, 4.4vw, 3.6rem) !important; }
+body #chatIntro h3 { font-size: clamp(1.8rem, 3vw, 2.6rem) !important; }
+body .home-call-copy strong { font-size: clamp(1.5rem, 2.3vw, 2.1rem) !important; display: block; }
+
+/* meta labels: mono, tiny, tracked wide */
+body :is(.side-label, .sidebar-label, .member-group-label, .home-card-index,
+  .home-eyebrow, .call-timer > span, .auth-copy .eyebrow, .messages-head-text p,
+  .home-panel-heading small, .vn-label, .modal-form label, .auth-form label,
+  .vc-label, .pill-chip, .mr-time, .msg-time) {
+  font-family: var(--sk-mono) !important;
+}
+
+/* ---- the canvas is black; cards are the colour ------------------- */
+body #appView :is(.content-stack, .main-pane, #workspace, .home-view,
+  .messages-view, .chat-view, .voice-view, .message-scroll, .sidebar,
+  .main-header, .member-panel, .activity-panel) {
+  background: var(--st-black) !important;
+  border-color: #222222 !important;
+}
+
+/* bento cards: each slot gets its own sticker colour, black type on it */
+body #appView .home-call-card.home-voice-card { background: var(--st-cream) !important; }
+body #appView .home-call-card.home-video-card { background: var(--st-sage) !important; }
+body #appView .home-live-panel { background: var(--st-yellow) !important; }
+body #appView .home-recent-panel { background: var(--st-coral) !important; }
+body #appView :is(.home-call-card, .home-live-panel, .home-recent-panel, .home-card-item) {
+  border: 0 !important;
+  border-radius: var(--ui-radius-panel) !important;
+  box-shadow: none !important;
+}
+body #appView .home-card-item:nth-child(4n + 1) { background: var(--st-yellow) !important; }
+body #appView .home-card-item:nth-child(4n + 2) { background: var(--st-cream) !important; }
+body #appView .home-card-item:nth-child(4n + 3) { background: var(--st-sage) !important; }
+body #appView .home-card-item:nth-child(4n + 4) { background: var(--st-coral) !important; }
+/* everything written on a coloured card is near-black */
+body #appView :is(.home-call-card, .home-live-panel, .home-recent-panel, .home-card-item) :is(h2, h3, strong, b, span, small, p, button, .hc-name) {
+  color: var(--st-card-ink) !important;
+}
+body #appView :is(.home-call-card, .home-live-panel, .home-recent-panel, .home-card-item) :is(small, .pill-chip, .home-card-index, .home-panel-heading small) {
+  color: var(--st-card-muted) !important;
+}
+/* controls sitting on a card flip to black blocks */
+body #appView :is(.home-call-card, .home-live-panel, .home-recent-panel, .home-card-item)
+  :is(button, .home-call-action, .home-live-join, .home-panel-heading > button) {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: var(--st-black) !important;
+  color: var(--st-cream) !important;
+}
+body #appView :is(.home-call-card, .home-live-panel, .home-recent-panel)
+  :is(button, .home-call-action) svg { color: var(--st-cream) !important; }
+body #appView .home-call-card .home-call-orbit {
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: var(--st-black) !important;
+  color: var(--st-cream) !important;
+}
+body #appView .home-call-card .home-call-orbit svg { color: var(--st-cream) !important; }
+body #appView .home-card-item .hc-icon {
+  border: 0 !important;
+  border-radius: 18px !important;
+  background: rgba(0, 0, 0, 0.12) !important;
+  color: var(--st-card-ink) !important;
+}
+body #appView .home-card-item .hc-arrow {
+  border: 0 !important;
+  background: var(--st-black) !important;
+  color: var(--st-cream) !important;
+}
+body #appView :is(.home-card-item, .home-live-room) .pill-chip {
+  background: rgba(0, 0, 0, 0.12) !important;
+  color: var(--st-card-ink) !important;
+}
+body #appView .home-live-room {
+  border: 0 !important;
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+body #appView .home-live-icon {
+  background: var(--st-black) !important;
+  color: var(--st-yellow) !important;
+}
+body #appView .home-live-copy :is(strong, small) { color: var(--st-card-ink) !important; }
+body #appView :is(.messages-empty-icon) { background: var(--st-surface-raised) !important; }
+
+/* sticker details: asterisk on the greeting, barcode on the live panel */
+body #appView .home-intro { position: relative !important; }
+body #appView .home-intro::after {
+  content: "✳";
+  position: absolute;
+  top: -4px;
+  right: 6px;
+  color: var(--st-yellow);
+  font-size: 44px;
+  line-height: 1;
+  animation: st-spin 14s linear infinite;
+}
+@keyframes st-spin { to { transform: rotate(360deg); } }
+body #appView .home-live-panel { position: relative !important; overflow: hidden !important; }
+body #appView .home-live-panel::after {
+  content: "";
+  position: absolute;
+  top: 26px;
+  right: -26px;
+  width: 84px;
+  height: 26px;
+  transform: rotate(90deg);
+  background: repeating-linear-gradient(90deg,
+    var(--st-card-ink) 0 2px, transparent 2px 5px,
+    var(--st-card-ink) 5px 6px, transparent 6px 10px,
+    var(--st-card-ink) 10px 13px, transparent 13px 16px);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+/* ---- sidebar: black rail, cream pill navigation ------------------- */
+body .side-brand :is(strong, small) { color: var(--st-cream) !important; }
+body .side-brand-mark { background: var(--st-yellow) !important; color: var(--st-black) !important; border-radius: 12px !important; }
+body .product-nav {
+  position: relative !important;
+  margin: 6px 0 10px !important;
+  padding: 12px 8px !important;
+  border: 0 !important;
+  border-radius: 22px !important;
+  background: var(--st-cream) !important;
+}
+body .product-nav::before,
+body .product-nav::after {
+  content: "✳";
+  display: block;
+  text-align: center;
+  color: var(--st-card-ink);
+  font-size: 15px;
+  line-height: 1;
+}
+body .product-nav::before { margin-bottom: 6px; }
+body .product-nav::after { margin-top: 6px; }
+body .product-nav-item {
+  border: 0 !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.14) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--st-card-ink) !important;
+  font-family: var(--sk-mono) !important;
+  font-size: 0.8125rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+body .product-nav-item:last-child { border-bottom: 0 !important; }
+body .product-nav-item:hover { background: rgba(0, 0, 0, 0.06) !important; color: var(--st-card-ink) !important; }
+body .product-nav-item.is-active {
+  background: var(--st-black) !important;
+  border-radius: 14px !important;
+  border-bottom-color: transparent !important;
+  color: var(--st-cream) !important;
+}
+body .product-nav-item.is-active .product-nav-icon { color: var(--st-yellow) !important; }
+body .product-nav-item .product-nav-icon { color: var(--st-card-ink) !important; }
+body .product-nav-item.is-active + .product-nav-item { border-top: 0 !important; }
+body .product-nav-badge { background: var(--st-coral) !important; color: var(--st-black) !important; }
+
+/* primary CTA: butter-yellow pill, black type */
+body :is(.primary-button, .side-add-main, .messages-head .primary-button,
+  #voiceJoinButton, .composer .send-button, #composerSend, .voice-tile-retry) {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: var(--st-yellow) !important;
+  color: var(--st-black) !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+body :is(.primary-button, .side-add-main, #voiceJoinButton):hover {
+  background: var(--ui-accent-strong) !important;
+  transform: translateY(-1px);
+}
+body :is(.primary-button, .side-add-main, .messages-head .primary-button,
+  #voiceJoinButton, .composer .send-button, #composerSend) svg {
+  color: var(--st-black) !important;
+}
+body :is(.ghost-button, .side-add-sub, .icon-button, .modal-close,
+  .sidebar-action, .dock-control) {
+  border: 1px solid #333333 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--st-cream) !important;
+}
+body :is(.ghost-button, .side-add-sub, .icon-button, .dock-control):hover {
+  border-color: var(--st-yellow) !important;
+  background: rgba(245, 205, 47, 0.1) !important;
+}
+body :is(.side-search, .global-search, .messages-search) {
+  border: 1px solid #333333 !important;
+  border-radius: 999px !important;
+  background: var(--st-ink) !important;
+}
+body :is(.side-search, .global-search, .messages-search) input { color: var(--st-cream) !important; }
+body #appView .server-rail .rail-item,
+body #appView :is(.channel-item, .dm-item) {
+  border-radius: 14px !important;
+  color: var(--st-cream) !important;
+}
+body #appView :is(.rail-item.is-active, .channel-item.is-active, .dm-item.is-active) {
+  border: 0 !important;
+  background: var(--st-cream) !important;
+  color: var(--st-black) !important;
+}
+body #appView :is(.rail-item.is-active, .channel-item.is-active, .dm-item.is-active) :is(.rail-name, .channel-name, .dm-name) { color: var(--st-black) !important; }
+body #appView :is(.rail-item.is-active, .channel-item.is-active) :is(.rail-ic, .ch-icon) { color: var(--st-black) !important; background: rgba(0,0,0,0.1) !important; }
+body #appView :is(.rail-name, .channel-name, .dm-name, .mr-name, .occ-name, .member-name) { color: inherit !important; }
+body #appView .server-rail .rail-row:nth-child(4n + 1) .rail-item:not(.is-active) .rail-ic { background: var(--st-yellow) !important; color: var(--st-black) !important; }
+body #appView .server-rail .rail-row:nth-child(4n + 2) .rail-item:not(.is-active) .rail-ic { background: var(--st-sage) !important; color: var(--st-black) !important; }
+body #appView .server-rail .rail-row:nth-child(4n + 3) .rail-item:not(.is-active) .rail-ic { background: var(--st-coral) !important; color: var(--st-black) !important; }
+body #appView .server-rail .rail-row:nth-child(4n + 4) .rail-item:not(.is-active) .rail-ic { background: var(--st-cream) !important; color: var(--st-black) !important; }
+body .side-profile { border-top: 1px solid #222222 !important; }
+body .side-profile :is(strong, small) { color: var(--st-cream) !important; }
+
+/* pills and badges: sticker chips */
+body :is(.pill-chip, .rail-badge, .mnav-badge, .guest-chip) {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: #262626 !important;
+  color: var(--st-cream) !important;
+}
+body :is(.pill-chip.live, .channel-live) { background: var(--st-sage) !important; color: var(--st-black) !important; }
+body :is(.pill-chip.mention-badge, .rail-badge, .mnav-badge) { background: var(--st-yellow) !important; color: var(--st-black) !important; }
+body .pill-chip.alert { background: var(--st-coral) !important; color: var(--st-black) !important; }
+body .mr-badge { background: var(--st-yellow) !important; color: var(--st-black) !important; }
+body :is(.mr-dot, .presence-dot.online, .unread-dot) { background: var(--st-sage) !important; }
+body #appView .messages-row.is-online .avatar {
+  box-shadow: 0 0 0 2px var(--st-black), 0 0 0 4px var(--st-sage) !important;
+}
+
+/* avatars: flat sticker discs */
+body .avatar {
+  border: 0 !important;
+  background: var(--st-cream) !important;
+  color: var(--st-black) !important;
+  font-family: var(--sk-mono) !important;
+  font-weight: 700 !important;
+}
+body .avatar.c2, body .avatar.c6 { background: var(--st-sage) !important; }
+body .avatar.c3, body .avatar.c7 { background: var(--st-yellow) !important; }
+body .avatar.c4, body .avatar.c8 { background: var(--st-coral) !important; }
+
+/* ---- chat --------------------------------------------------------- */
+body #appView .msg-content { color: var(--st-cream) !important; }
+body #appView .msg-author { color: var(--st-white) !important; }
+body #appView :is(.msg-time, .msg-hover-time, .mr-preview, .mr-time) { color: var(--ui-text-muted) !important; }
+body #appView .msg:hover { background: #161616 !important; }
+body #appView .msg.is-mention {
+  border-left: 3px solid var(--st-yellow) !important;
+  background: rgba(245, 205, 47, 0.08) !important;
+}
+body .composer {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: var(--st-cream) !important;
+}
+body .composer :is(textarea, input) { color: var(--st-black) !important; caret-color: var(--st-black); }
+body .composer :is(textarea, input)::placeholder { color: #6B6450 !important; }
+body .composer .icon-button { border: 0 !important; color: var(--st-card-ink) !important; }
+body .composer:focus-within { box-shadow: 0 0 0 3px rgba(245, 205, 47, 0.4) !important; }
+body #appView .msg-actions {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: var(--st-cream) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4) !important;
+}
+body #appView .msg-actions .icon-button { color: var(--st-card-ink) !important; border: 0 !important; }
+body #appView .reaction-chip {
+  border: 0 !important;
+  background: #222222 !important;
+  color: var(--st-cream) !important;
+}
+body #appView .reaction-chip.is-mine { background: var(--st-yellow) !important; color: var(--st-black) !important; }
+/* voice note: cream sticker strip */
+body .attachment-voice.voice-note {
+  border: 0 !important;
+  border-radius: 22px !important;
+  background: var(--st-cream) !important;
+}
+body .voice-note :is(.vn-label, .vn-time) { color: var(--st-card-muted) !important; }
+body .voice-note .vn-play { background: var(--st-black) !important; border: 0 !important; color: var(--st-cream) !important; }
+body .voice-note .vn-bar { background: rgba(0, 0, 0, 0.22) !important; }
+body .voice-note .vn-bar.is-played { background: var(--st-black) !important; }
+
+/* ---- call view: black stage, sticker tiles, cream control pill ---- */
+body #appView #voiceStage,
+body #appView .voice-stage.pin-max {
+  border: 0 !important;
+  border-radius: var(--ui-radius-panel) !important;
+  background: var(--st-ink) !important;
+}
+body #appView .voice-tile {
+  border: 0 !important;
+  border-radius: 24px !important;
+  background: #1C1C1C !important;
+}
+body #appView .voice-tile video { background: #101010 !important; }
+body #appView .voice-tile.is-speaking {
+  border: 0 !important;
+  box-shadow: 0 0 0 3px var(--st-sage) !important;
+}
+body #appView .voice-tile.is-pinned { box-shadow: 0 0 0 3px var(--st-yellow) !important; }
+body #appView :is(.voice-tile-footer .voice-tile-name, .screen-label) {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: var(--st-cream) !important;
+  color: var(--st-black) !important;
+}
+body #appView .voice-tile-name svg { color: var(--st-black) !important; }
+body #appView .voice-tile-name .tile-muted { color: #B3402A !important; }
+body #appView .voice-controls {
+  border-radius: 999px !important;
+  background: var(--st-cream) !important;
+  padding: 10px !important;
+}
+body #appView .voice-controls > .v-control {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--st-card-ink) !important;
+  box-shadow: none !important;
+}
+body #appView .voice-controls > .v-control:hover { background: rgba(0, 0, 0, 0.08) !important; }
+body #appView .voice-controls > .v-control svg { color: var(--st-card-ink) !important; }
+body #appView .voice-controls > .v-control.leave {
+  background: var(--st-coral) !important;
+}
+body #appView .voice-controls > .v-control.leave :is(svg, .vc-label) { color: var(--st-black) !important; }
+body #appView .call-timer > span { color: var(--st-yellow) !important; }
+body #appView .call-timer strong { color: var(--st-cream) !important; font-family: var(--sk-mono) !important; }
+body #appView .voice-stage.pin-max :is(.call-timer, .unpin-button) {
+  border: 0 !important;
+  background: var(--st-cream) !important;
+  color: var(--st-black) !important;
+}
+body #appView .voice-stage.pin-max .call-timer :is(span, strong) { color: var(--st-black) !important; }
+body .voice-tile-conn {
+  border: 0 !important;
+  background: var(--st-yellow) !important;
+  color: var(--st-black) !important;
+  border-radius: 999px !important;
+}
+body .voice-tile.is-failed .voice-tile-conn { background: var(--st-coral) !important; color: var(--st-black) !important; }
+body .voice-tile-retry { background: var(--st-black) !important; color: var(--st-cream) !important; }
+body .voice-dock {
+  border: 0 !important;
+  border-radius: 22px !important;
+  background: var(--st-cream) !important;
+}
+body .voice-dock :is(.voice-dock-status, .voice-dock-name, span, svg) { color: var(--st-card-ink) !important; }
+body .voice-dock .voice-dock-status { color: #2E5B33 !important; }
+body .voice-dock .dock-control { border-color: rgba(0, 0, 0, 0.2) !important; color: var(--st-card-ink) !important; }
+body .voice-dock .icon-button.danger { background: var(--st-coral) !important; border: 0 !important; }
+body .voice-dock .icon-button.danger svg { color: var(--st-black) !important; }
+
+/* prejoin card = cream sticker */
+body #appView .voice-prejoin > div {
+  border: 0 !important;
+  border-radius: var(--ui-radius-panel) !important;
+  background: var(--st-cream) !important;
+}
+body #appView .voice-prejoin :is(h2, p, span, small) { color: var(--st-card-ink) !important; }
+body #appView .voice-prejoin .ghost-button {
+  border-color: var(--st-card-ink) !important;
+  color: var(--st-card-ink) !important;
+}
+body #appView .voice-prejoin #voiceJoinButton { background: var(--st-black) !important; color: var(--st-cream) !important; }
+body #appView .voice-prejoin #voiceJoinButton svg { color: var(--st-cream) !important; }
+
+/* ---- modals + popovers: cream sticker cards ----------------------- */
+body .modal-root .modal-card,
+body .popover,
+body .emoji-popup,
+body .mention-popup {
+  border: 0 !important;
+  border-radius: var(--ui-radius-panel) !important;
+  background: var(--st-cream) !important;
+  color: var(--st-card-ink) !important;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55) !important;
+}
+body .modal-root .modal-card :is(h2, h3, p, span, label, strong, small, li, code) { color: var(--st-card-ink) !important; }
+body .modal-root .modal-card :is(.modal-sub, label, small) { color: var(--st-card-muted) !important; }
+body .modal-root .modal-card :is(input, textarea, select) {
+  border: 2px solid var(--st-card-ink) !important;
+  border-radius: 14px !important;
+  background: var(--st-white) !important;
+  color: var(--st-card-ink) !important;
+}
+body .modal-root .modal-card :is(input, textarea, select):focus {
+  border-color: var(--st-card-ink) !important;
+  box-shadow: 0 0 0 3px rgba(245, 205, 47, 0.55) !important;
+}
+body .modal-root .modal-card .modal-tabs {
+  border: 2px solid var(--st-card-ink) !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+}
+body .modal-root .modal-card .modal-tabs button { color: var(--st-card-ink) !important; border-radius: 999px !important; }
+body .modal-root .modal-card .modal-tabs button.is-active,
+body .modal-root .modal-card .modal-tabs button[aria-selected="true"] {
+  background: var(--st-black) !important;
+  color: var(--st-cream) !important;
+}
+body .modal-root .modal-card .primary-button { background: var(--st-black) !important; color: var(--st-cream) !important; }
+body .modal-root .modal-card .primary-button svg { color: var(--st-cream) !important; }
+body .modal-root .modal-card .ghost-button {
+  border: 2px solid var(--st-card-ink) !important;
+  background: transparent !important;
+  color: var(--st-card-ink) !important;
+}
+body .modal-root .modal-card .ghost-button svg { color: var(--st-card-ink) !important; }
+body .modal-root .modal-close {
+  border: 2px solid var(--st-card-ink) !important;
+  background: transparent !important;
+  color: var(--st-card-ink) !important;
+}
+body .modal-root .modal-close svg { color: var(--st-card-ink) !important; }
+body .popover :is(.menu-item, button) { color: var(--st-card-ink) !important; }
+body .popover :is(.menu-item, button) svg { color: var(--st-card-ink) !important; }
+body .popover :is(.menu-item, button):hover { background: rgba(0, 0, 0, 0.08) !important; }
+body .popover :is(strong, small, span) { color: var(--st-card-ink) !important; }
+body .invite-link-box {
+  border: 2px dashed var(--st-card-ink) !important;
+  border-radius: 16px !important;
+  background: transparent !important;
+}
+body .modal-root .form-error { color: #B3402A !important; }
+
+/* ---- messages inbox rows ------------------------------------------ */
+body #appView .messages-row {
+  border: 1px solid #262626 !important;
+  border-radius: 20px !important;
+  background: var(--st-ink) !important;
+}
+body #appView .messages-row:hover { background: #1D1D1D !important; box-shadow: none !important; }
+body #appView .messages-row .mr-name { color: var(--st-cream) !important; }
+body #appView .messages-row.has-unread .mr-preview { color: var(--st-cream) !important; }
+body #appView .messages-row.has-unread .mr-time { color: var(--st-yellow) !important; }
+
+/* ---- auth + splash: the sticker sheet opening --------------------- */
+body .auth-view { background: var(--st-black) !important; }
+body .auth-copy :is(h1, .intro, li) { color: var(--st-cream) !important; }
+body .auth-copy .eyebrow { color: var(--st-yellow) !important; }
+body .auth-copy .eyebrow span { background: var(--st-yellow) !important; }
+body .auth-points svg { color: var(--st-yellow) !important; }
+body .auth-card {
+  border: 0 !important;
+  border-radius: var(--ui-radius-panel) !important;
+  background: var(--st-cream) !important;
+  color: var(--st-card-ink) !important;
+}
+body .auth-card :is(label, p, span, small, .auth-hint) { color: var(--st-card-muted) !important; }
+body .auth-card :is(input) {
+  border: 2px solid var(--st-card-ink) !important;
+  border-radius: 14px !important;
+  background: var(--st-white) !important;
+  color: var(--st-card-ink) !important;
+}
+body .auth-card .auth-tabs {
+  border: 2px solid var(--st-card-ink) !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+}
+body .auth-card .auth-tabs button { color: var(--st-card-ink) !important; border-radius: 999px !important; }
+body .auth-card .auth-tabs button.is-active { background: var(--st-black) !important; color: var(--st-cream) !important; }
+body .auth-card .primary-button { background: var(--st-black) !important; color: var(--st-cream) !important; }
+body .auth-header .brand span { color: var(--st-cream) !important; }
+body .brand-mark { background: var(--st-yellow) !important; color: var(--st-black) !important; }
+body .privacy-pill { border: 1px solid #333333 !important; color: var(--st-cream) !important; background: transparent !important; }
+
+/* splash: yellow sticker pops in, asterisk spins, bar sweeps */
+body .splash-view { background: var(--st-black) !important; }
+body .splash-card {
+  position: relative !important;
+  border: 0 !important;
+  border-radius: 32px !important;
+  background: var(--st-yellow) !important;
+  color: var(--st-black) !important;
+  box-shadow: none !important;
+  animation: st-pop 640ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes st-pop {
+  from { transform: scale(0.82) rotate(-3deg); opacity: 0; }
+  to { transform: scale(1) rotate(0); opacity: 1; }
+}
+body .splash-card::before,
+body .splash-card::after {
+  content: "✳";
+  position: absolute;
+  color: var(--st-black);
+  font-size: 30px;
+  line-height: 1;
+  animation: st-spin 10s linear infinite;
+}
+body .splash-card::before { top: 14px; left: 18px; }
+body .splash-card::after { right: 18px; bottom: 14px; animation-direction: reverse; }
+body .splash-card h1 { color: var(--st-black) !important; }
+body .splash-card p {
+  color: rgba(0, 0, 0, 0.62) !important;
+  font-family: var(--sk-mono) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  font-size: 0.6875rem !important;
+}
+body .splash-logo {
+  border: 0 !important;
+  background: var(--st-black) !important;
+  color: var(--st-yellow) !important;
+  border-radius: 16px !important;
+}
+body .splash-bar {
+  border-radius: 999px !important;
+  background: rgba(0, 0, 0, 0.18) !important;
+}
+body .splash-bar i { background: var(--st-black) !important; border-radius: 999px !important; }
+@media (prefers-reduced-motion: reduce) {
+  body .splash-card, body .splash-card::before, body .splash-card::after,
+  body #appView .home-intro::after { animation: none !important; }
+}
+
+/* ---- small single details ----------------------------------------- */
+body ::selection { background: var(--st-yellow); color: var(--st-black); }
+body ::-webkit-scrollbar { width: 10px; height: 10px; }
+body ::-webkit-scrollbar-thumb {
+  border: 3px solid var(--st-black);
+  border-radius: 999px;
+  background: #3A3A3A;
+}
+body ::-webkit-scrollbar-track { background: transparent; }
+body .temp-banner {
+  border: 1px dashed #3A3A3A !important;
+  border-radius: 16px !important;
+  background: var(--st-ink) !important;
+}
+body .temp-banner :is(strong, small, svg) { color: var(--st-cream) !important; }
+body .temp-banner svg { color: var(--st-yellow) !important; }
+body #appView .toast, body .toast {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: var(--st-cream) !important;
+  color: var(--st-black) !important;
+}
+body .header-me-button .avatar { box-shadow: 0 0 0 2px var(--st-yellow) !important; }
+body #appView .home-panel-heading > button { height: 34px !important; padding: 0 16px !important; }
+body #appView :is(.home-view, .messages-view) { background: var(--st-black) !important; }
+
+/* corrections: black pills on cards keep cream labels all the way down */
+body #appView :is(.home-call-card, .home-live-panel, .home-recent-panel, .home-card-item)
+  :is(button, .home-call-action, .home-live-join) :is(span, strong, small, b) {
+  color: var(--st-cream) !important;
+}
+body #appView :is(.home-call-card, .home-live-panel, .home-recent-panel, .home-card-item)
+  :is(button, .home-call-action, .home-live-join) svg {
+  color: var(--st-yellow) !important;
+}
+body #appView .home-card-item .hc-arrow svg { color: var(--st-cream) !important; }
+/* active space row: black type on the cream sticker, explicitly */
+body #appView .server-rail .rail-item.is-active,
+body #appView .server-rail .rail-item.is-active .rail-name,
+body #appView .channel-item.is-active .channel-name,
+body #appView .dm-item.is-active .dm-name {
+  color: var(--st-black) !important;
+}
+body #appView .server-rail .rail-item.is-active.has-unread { filter: none !important; opacity: 1 !important; }
+/* coral card: give the last button room */
+body #appView .home-recent-panel { padding-bottom: 30px !important; }
+body #appView .messages-empty { margin-top: 18px !important; }
+
+/* An earlier surfaces rule carries ID-level weight (an #id inside :is()),
+   so these off-#appView surfaces need the same weight. :not(#_) adds an
+   ID's specificity without needing a real id. */
+body .auth-card:not(#_) {
+  border: 0 !important;
+  border-radius: var(--ui-radius-panel) !important;
+  background: var(--st-cream) !important;
+  color: var(--st-card-ink) !important;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55) !important;
+}
+body .auth-card:not(#_) :is(label, p, span, small, .auth-hint) { color: var(--st-card-muted) !important; }
+body .auth-card:not(#_) input {
+  border: 2px solid var(--st-card-ink) !important;
+  border-radius: 14px !important;
+  background: var(--st-white) !important;
+  color: var(--st-card-ink) !important;
+}
+body .auth-card:not(#_) .auth-tabs {
+  border: 2px solid var(--st-card-ink) !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+}
+body .auth-card:not(#_) .auth-tabs button { color: var(--st-card-ink) !important; border-radius: 999px !important; background: transparent !important; }
+body .auth-card:not(#_) .auth-tabs button.is-active { background: var(--st-black) !important; color: var(--st-cream) !important; }
+body .auth-card:not(#_) .primary-button { background: var(--st-black) !important; color: var(--st-cream) !important; }
+body .auth-card:not(#_) .form-error { color: #B3402A !important; }
+
+body .modal-card:not(#_),
+body .popover:not(#_),
+body .emoji-popup:not(#_),
+body .mention-popup:not(#_) {
+  border: 0 !important;
+  border-radius: var(--ui-radius-panel) !important;
+  background: var(--st-cream) !important;
+  color: var(--st-card-ink) !important;
+}
+body .composer:not(#_) {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: var(--st-cream) !important;
+}
+body .attachment-voice:not(#_) {
+  border: 0 !important;
+  border-radius: 22px !important;
+  background: var(--st-cream) !important;
+}
+body .voice-dock:not(#_) {
+  border: 0 !important;
+  border-radius: 22px !important;
+  background: var(--st-cream) !important;
+}
+body .temp-banner:not(#_) {
+  border: 1px dashed #3A3A3A !important;
+  border-radius: 16px !important;
+  background: var(--st-ink) !important;
+}
+
+/* chat corrections: composer chips readable, flat message rows,
+   active space name truly black on its cream sticker */
+body .composer:not(#_) .icon-button {
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--st-card-ink) !important;
+}
+body .composer:not(#_) .icon-button svg { color: var(--st-card-ink) !important; }
+body .composer:not(#_) :is(.send-button, #composerSend) {
+  background: var(--st-yellow) !important;
+}
+body .composer:not(#_) :is(.send-button, #composerSend) svg { color: var(--st-black) !important; }
+body #appView .msg-body:not(#_) {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+body #appView .msg:not(#_):hover { background: #161616 !important; }
+body #appView .server-rail .rail-item.is-active:not(#_),
+body #appView .server-rail .rail-item.is-active:not(#_) :is(.rail-name, .rail-ic, span) {
+  color: var(--st-black) !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+body #appView :is(.channel-item.is-active, .dm-item.is-active):not(#_) :is(.channel-name, .dm-name, .ch-icon, span) {
+  color: var(--st-black) !important;
+}
+/* chat intro divider + day rule read on black */
+body #appView :is(.day-divider, .chat-intro) { color: var(--ui-text-muted) !important; }
+
+/* the old cyan wash on every message row goes flat black */
+body #appView .message-list > .msg:not(#_) {
+  background: transparent !important;
+}
+body #appView .message-list > .msg:not(#_):hover { background: #161616 !important; }
+body #appView .message-list > .msg.is-mention:not(#_) {
+  background: rgba(245, 205, 47, 0.08) !important;
+}
+
+/* splash wordmark: solid black on the yellow sticker */
+body .splash-card:not(#_) h1 {
+  color: var(--st-black) !important;
+  -webkit-text-fill-color: var(--st-black) !important;
+  background: none !important;
+  font-family: var(--sk-display) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.02em !important;
+}
