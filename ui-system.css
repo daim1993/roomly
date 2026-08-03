@@ -6994,3 +6994,259 @@ body .splash-card:not(#_) h1 {
   text-transform: uppercase !important;
   letter-spacing: 0.02em !important;
 }
+
+/* ================================================================== *
+ *  Contrast repair — every reading below WCAG 4.5:1 from the scan    *
+ * ================================================================== */
+
+/* darker muted ink: readable on cream, yellow, sage AND coral cards */
+:root { --st-card-muted: #201D14; }
+
+/* modal headline was cream-on-cream (an old dark rule outweighed the
+   card ink); labels and helper text inherit the page muted by mistake */
+body .modal-card:not(#_) > :is(h2, h3),
+body .modal-card:not(#_) :is(h2, h3) {
+  color: var(--st-card-ink) !important;
+  -webkit-text-fill-color: var(--st-card-ink) !important;
+  background: none !important;
+}
+body .modal-card:not(#_) :is(label, .modal-sub, small, p, .bio-counter) {
+  color: var(--st-card-muted) !important;
+}
+/* dark inner panels inside the cream card flip to white blocks */
+body .modal-card:not(#_) :is(.invite-link-box, .choice-card, .choice-row > *) {
+  background: var(--st-white) !important;
+  border: 2px solid var(--st-card-ink) !important;
+  border-radius: 16px !important;
+  color: var(--st-card-ink) !important;
+}
+body .modal-card:not(#_) .invite-link-box :is(code, span) { color: var(--st-card-ink) !important; }
+body .modal-card:not(#_) .invite-link-box .ghost-button,
+body .modal-card:not(#_) .ghost-button.small {
+  border: 2px solid var(--st-card-ink) !important;
+  background: transparent !important;
+  color: var(--st-card-ink) !important;
+}
+body .modal-card:not(#_) .choice-card:hover { background: var(--st-yellow) !important; }
+body .modal-card:not(#_) .choice-card svg { color: var(--st-card-ink) !important; }
+
+/* the ACTIVE space row lost its cream sticker to a more specific old
+   rule — reassert with matching weight */
+body #appView .server-rail .rail-item.is-active:not(#_) {
+  background: var(--st-cream) !important;
+  color: var(--st-black) !important;
+}
+body #appView .server-rail .rail-item.is-active:not(#_) .rail-name { color: var(--st-black) !important; }
+body #appView :is(.channel-item.is-active, .dm-item.is-active):not(#_) {
+  background: var(--st-cream) !important;
+  color: var(--st-black) !important;
+}
+
+/* prejoin secondary button: solid white chip, never ink-on-dark */
+body #appView .voice-prejoin .ghost-button:not(#_),
+body #appView #voiceJoinMicButton:not(#_) {
+  border: 2px solid var(--st-card-ink) !important;
+  background: var(--st-white) !important;
+  color: var(--st-card-ink) !important;
+}
+body #appView #voiceJoinMicButton:not(#_) svg { color: var(--st-card-ink) !important; }
+
+/* chips riding coloured cards keep the darker ink too */
+body #appView :is(.home-call-card, .home-live-panel, .home-recent-panel, .home-card-item)
+  :is(.pill-chip, small, .home-card-index) {
+  color: var(--st-card-muted) !important;
+}
+
+/* empty-spaces card on home: cream sticker like everything else */
+body #appView .home-empty-spaces:not(#_) {
+  display: grid !important;
+  justify-items: center !important;
+  gap: 8px !important;
+  padding: 32px 24px !important;
+  border: 0 !important;
+  border-radius: var(--ui-radius-panel) !important;
+  background: var(--st-cream) !important;
+  text-align: center !important;
+}
+body #appView .home-empty-spaces:not(#_) :is(strong, small, svg) { color: var(--st-card-ink) !important; }
+body #appView .home-empty-spaces:not(#_) small { color: var(--st-card-muted) !important; }
+body #appView .home-empty-spaces:not(#_) > span {
+  display: grid; place-items: center;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--st-black);
+  color: var(--st-yellow) !important;
+}
+body #appView .home-empty-spaces:not(#_) > span svg { color: var(--st-yellow) !important; }
+body #appView .home-empty-spaces:not(#_) button {
+  border: 0 !important;
+  border-radius: 999px !important;
+  padding: 10px 20px !important;
+  background: var(--st-black) !important;
+  color: var(--st-cream) !important;
+}
+
+/* ================================================================== *
+ *  Mobile spaces pane — reachable, thumb-sized, scrollable           *
+ *  The bottom tab bar already navigates, so the sidebar becomes a    *
+ *  clean spaces + conversations list instead of a second nav.        *
+ * ================================================================== */
+@media (max-width: 820px) {
+  /* the bottom tab bar covers navigation — drop the tall cream pill */
+  body #appView.is-mobile .product-nav:not(#_) { display: none !important; }
+
+  /* the pane is a strict column: fixed chrome, one scrolling middle */
+  /* the pane exists only while the Spaces tab is open — otherwise it must
+     fully vanish or it silently covers the chat and the bottom bar */
+  body #appView.is-mobile:not(.m-nav) .sidebar:not(#_) {
+    display: none !important;
+  }
+  body #appView.is-mobile.m-nav .sidebar:not(#_) {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    height: calc(100dvh - var(--ui-mobile-nav, 68px)) !important;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    gap: 10px !important;
+    overflow: hidden !important;
+  }
+  body #appView.is-mobile .sidebar:not(#_) > * {
+    position: static !important;
+    flex: none !important;
+    margin: 0 !important;
+  }
+  body #appView.is-mobile #sidebarScroll:not(#_) {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: 8px !important;
+  }
+
+  /* thumb-sized rows: 52px minimum, full-size type, bigger icon tiles */
+  body #appView.is-mobile :is(.rail-item, .channel-item, .dm-item):not(#_) {
+    min-height: 52px !important;
+    font-size: 1rem !important;
+  }
+  body #appView.is-mobile .server-rail .rail-item:not(#_) {
+    grid-template-columns: 36px minmax(0, 1fr) auto !important;
+    gap: 12px !important;
+    padding: 0 12px !important;
+  }
+  body #appView.is-mobile .server-rail .rail-ic:not(#_) {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 11px !important;
+    font-size: 0.875rem !important;
+  }
+  body #appView.is-mobile .server-rail .rail-name:not(#_) {
+    font-size: 1rem !important;
+  }
+  body #appView.is-mobile :is(.channel-name, .dm-name):not(#_) {
+    font-size: 1rem !important;
+  }
+  body #appView.is-mobile .server-rail .rail-row:not(#_) {
+    grid-template-columns: minmax(0, 1fr) 40px !important;
+  }
+  body #appView.is-mobile .server-rail .rail-row > .icon-button:not(#_) {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+  }
+  body #appView.is-mobile :is(.sidebar-label, .side-label):not(#_) {
+    margin: 14px 4px 8px !important;
+    font-size: 0.75rem !important;
+  }
+  body #appView.is-mobile .sidebar-label-row .icon-button:not(#_) {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+  }
+
+  /* action buttons and profile sit as fixed rows under the scroll */
+  body #appView.is-mobile .side-add-card:not(#_) {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  body #appView.is-mobile :is(.side-add-main, .side-add-sub):not(#_) {
+    width: 100% !important;
+    min-height: 48px !important;
+  }
+  body #appView.is-mobile .side-profile:not(#_) {
+    border-top: 1px solid #262626 !important;
+    padding-top: 10px !important;
+    min-height: 56px !important;
+  }
+  body #appView.is-mobile .side-search:not(#_) {
+    min-height: 48px !important;
+  }
+  body #appView.is-mobile .side-brand:not(#_) { padding: 2px 4px !important; }
+
+  /* the spinning asterisk collides with the greeting on small screens */
+  body #appView.is-mobile .home-intro::after {
+    top: -12px !important;
+    right: 0 !important;
+    font-size: 30px !important;
+  }
+
+  /* modal sheets: white fields keep ink type (the dark-input look came
+     from an old mobile sheet rule) */
+  body .modal-card:not(#_) :is(input, textarea, select) {
+    background: var(--st-white) !important;
+    color: var(--st-card-ink) !important;
+    font-size: 16px !important; /* stops iOS zoom-on-focus */
+  }
+  body .modal-card:not(#_) :is(input, textarea)::placeholder { color: #6B6450 !important; }
+
+  /* bottom tab bar: sticker chips on black, active inverted to yellow */
+  body .mnav-item:not(#_) {
+    color: #8F8A78 !important;
+  }
+  body .mnav-item.is-active:not(#_) {
+    background: var(--st-yellow) !important;
+    border-radius: 18px !important;
+    color: var(--st-black) !important;
+    box-shadow: none !important;
+  }
+  body .mnav-item.is-active:not(#_) :is(svg, span) { color: var(--st-black) !important; }
+}
+
+/* message action pill: cream chip with ink glyphs, everywhere */
+body #appView .msg-actions:not(#_) {
+  background: var(--st-cream) !important;
+}
+body #appView .msg-actions:not(#_) .icon-button {
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--st-card-ink) !important;
+}
+body #appView .msg-actions:not(#_) .icon-button svg { color: var(--st-card-ink) !important; }
+body #appView .msg-actions:not(#_) .icon-button:hover { background: rgba(0, 0, 0, 0.1) !important; }
+
+@media (max-width: 820px) {
+  /* call controls fit the screen: four equal slices of one cream pill */
+  body #appView .voice-controls:not(#_) {
+    width: 100% !important;
+    justify-content: stretch !important;
+    gap: 4px !important;
+    padding: 8px !important;
+  }
+  body #appView .voice-controls:not(#_) > .v-control {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: 58px !important;
+  }
+  body #appView .voice-controls:not(#_) > .v-control .vc-label {
+    font-size: 0.5625rem !important;
+    letter-spacing: 0.04em !important;
+  }
+  /* the action pill hugs the message instead of covering the one above */
+  body #appView .msg-actions:not(#_) {
+    top: -34px !important;
+    right: 4px !important;
+  }
+}
