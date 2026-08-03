@@ -7458,3 +7458,71 @@ body #appView .v-control.is-off:not(#_) .icon-off { display: block !important; }
 body .dock-control:not(#_) .icon-off { display: none !important; }
 body .dock-control.is-off:not(#_) .icon-on { display: none !important; }
 body .dock-control.is-off:not(#_) .icon-off { display: block !important; }
+
+/* ================================================================== *
+ *  MOBILE POLISH — close signs readable, buttons sit centred          *
+ * ================================================================== */
+
+/* every dialog/sheet close is a black circle with a cream X:
+   an old ".modal-card > .modal-close" rule kept a dark square behind
+   an ink glyph (1.1:1) — invisible on phones */
+body .modal-root .modal-close:not(#_),
+body .modal-root .modal-card > .modal-close:not(#_),
+body .modal-card > button.modal-close:not(#_) {
+  width: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: var(--st-black) !important;
+  color: var(--st-cream) !important;
+  display: grid !important;
+  place-items: center !important;
+}
+body .modal-root .modal-close:not(#_) svg,
+body .modal-card > button.modal-close:not(#_) svg {
+  color: var(--st-cream) !important;
+  width: 14px !important;
+  height: 14px !important;
+  margin: 0 !important;
+}
+body .modal-root .modal-close:not(#_):hover,
+body .modal-card > button.modal-close:not(#_):hover {
+  background: var(--st-yellow) !important;
+  color: var(--st-black) !important;
+}
+body .modal-root .modal-close:not(#_):hover svg,
+body .modal-card > button.modal-close:not(#_):hover svg {
+  color: var(--st-black) !important;
+}
+
+/* home call cards: icon and label sit together, centred — the old
+   space-between pushed them to opposite ends of the pill */
+body #appView .home-call-action:not(#_) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  padding: 0 22px !important;
+}
+
+/* mobile dock: even rhythm, roomier padding */
+@media (max-width: 820px) {
+  body > .voice-dock:not(#_) {
+    gap: 10px !important;
+    padding: 10px 12px !important;
+  }
+  body > .voice-dock:not(#_) .voice-dock-controls {
+    margin-top: 0 !important;
+    flex: none !important;
+  }
+  body > .voice-dock:not(#_) :is(.dock-control, .icon-button.danger) {
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+  }
+}

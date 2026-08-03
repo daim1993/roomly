@@ -331,7 +331,7 @@ function applyMobileLayout() {
 
   const navigationPaneOpen = mobile && state.mobilePane === 'nav';
   setNavigationState(ui.mnavHome, !navigationPaneOpen && state.view.kind === 'home');
-  setNavigationState(ui.mnavChats, !navigationPaneOpen && state.view.kind === 'dm');
+  setNavigationState(ui.mnavChats, !navigationPaneOpen && (state.view.kind === 'dm' || state.view.kind === 'messages'));
   setNavigationState(ui.mnavCalls, !navigationPaneOpen && state.view.kind === 'voice');
   setNavigationState(ui.mnavSpaces, navigationPaneOpen || (!navigationPaneOpen && state.view.kind === 'text'));
   ui.mnavMe.classList.remove('is-active');
