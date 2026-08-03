@@ -7526,3 +7526,51 @@ body #appView .home-call-action:not(#_) {
     min-height: 42px !important;
   }
 }
+
+/* ================================================================== *
+ *  SIDEBAR BALANCE — the nav card slims down so rooms and             *
+ *  conversations (the part that matters) get the height               *
+ * ================================================================== */
+@media (min-width: 821px) {
+  body .product-nav:not(#_) {
+    margin: 4px 0 8px !important;
+    padding: 6px 6px !important;
+    border-radius: 18px !important;
+  }
+  /* one small sticker mark instead of two big ones */
+  body .product-nav:not(#_)::before { display: none !important; }
+  body .product-nav:not(#_)::after {
+    font-size: 11px;
+    margin-top: 4px;
+    opacity: 0.75;
+  }
+  body .product-nav-item:not(#_) {
+    min-height: 33px !important;
+    grid-template-columns: 20px minmax(0, 1fr) auto !important;
+    gap: 8px !important;
+    padding: 0 10px !important;
+    font-size: 0.71rem !important;
+  }
+  body .product-nav-item:not(#_) .product-nav-icon {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  body .product-nav-item:not(#_) .product-nav-icon svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+  body .product-nav-item.is-active:not(#_) { border-radius: 10px !important; }
+
+  /* top action buttons: a notch tighter */
+  body .side-add-card:not(#_) { padding: 8px 0 10px !important; gap: 6px !important; }
+  body :is(.side-add-main, .side-add-sub):not(#_) {
+    height: 42px !important;
+    min-height: 42px !important;
+  }
+
+  /* the rooms/conversations region takes every spare pixel */
+  body #appView .sidebar #sidebarScroll:not(#_) {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+  }
+}
