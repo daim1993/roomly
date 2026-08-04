@@ -7797,3 +7797,119 @@ body #appView .msg .msg-actions:not(#_) {
   }
   #appView::after { display: none; }
 }
+
+/* ================================================================== *
+ *  REFINE-12 — dialog craft: quiet titles, one field style, no        *
+ *  visible scrollbars in sheets, compact mobile messaging, clean      *
+ *  tile footer, nav pill breathing room.                              *
+ * ================================================================== */
+
+/* 1 — dialog titles: Anton is a poster face; at 17px it reads cheap.
+   Dialogs speak in the sans voice, sentence case, confident weight. */
+body :is(.modal-card > h2, .modal-card > h3, .auth-card h2):not(#_) {
+  font-family: var(--sk-sans) !important;
+  font-weight: 700 !important;
+  font-size: 1.3rem !important;
+  letter-spacing: -0.01em !important;
+  text-transform: none !important;
+  line-height: 1.15 !important;
+}
+
+/* 2 — one field style everywhere in dialogs: white paper, ink border.
+   (Display name / pronouns were stuck black from an ID-weight rule.) */
+body .modal-root .modal-card :is(input, textarea, select):not(#_) {
+  border: 2px solid var(--st-card-ink) !important;
+  border-radius: 14px !important;
+  background: var(--st-white) !important;
+  color: var(--st-card-ink) !important;
+  -webkit-text-fill-color: var(--st-card-ink) !important;
+}
+body .modal-root .modal-card :is(input, textarea):not(#_)::placeholder {
+  color: #6B6450 !important;
+  -webkit-text-fill-color: #6B6450 !important;
+}
+
+/* 2b — sheets scroll silently: no visible scrollbar hardware */
+body .modal-card.settings-card:not(#_) {
+  height: min(640px, 90dvh) !important;
+  max-height: min(640px, 90dvh) !important;
+}
+body .modal-card.settings-card * { scrollbar-width: none !important; }
+body .modal-card.settings-card *::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none !important; }
+
+/* 6 — plain dialogs shrink-wrap their content, never stretch */
+body .modal-root .modal-card:not(.settings-card):not(#_) {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+/* tile footer: just the name pill, no glass bar behind it */
+body #appView .voice-tile-footer:not(#_) {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+/* 5 — nav pill: the active chip and the ✳ get real clearance */
+@media (min-width: 821px) {
+  body .product-nav:not(#_) { padding: 6px 8px 8px !important; }
+  body .product-nav:not(#_)::after { margin: 5px 0 1px !important; line-height: 1 !important; }
+  body .product-nav-item.is-active:not(#_) { border-radius: 12px !important; }
+}
+
+/* 3+4+7 — mobile messaging: one tight row, thumb-sized, auto-fit */
+@media (max-width: 820px) {
+  body .composer:not(#_) {
+    grid-template-columns: 38px minmax(0, 1fr) 38px 38px 40px !important;
+    align-items: center !important;
+    min-height: 0 !important;
+    padding: 6px 8px !important;
+    gap: 4px !important;
+    border-radius: 26px !important;
+  }
+  body .composer:not(#_) :is(textarea, input) {
+    min-height: 38px !important;
+    max-height: 96px !important;
+    padding: 9px 6px !important;
+    font-size: 16px !important;
+  }
+  body .composer:not(#_) .icon-button {
+    width: 38px !important;
+    min-width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+  }
+  body .composer:not(#_) :is(.send-button, #composerSend) {
+    width: 40px !important;
+    min-width: 40px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    border-radius: 50% !important;
+  }
+  body #appView.is-mobile .message-list > .msg:not(#_) { margin-top: 6px !important; }
+  /* bottom sheets hug their content too */
+  body .modal-root .modal-card:not(.settings-card):not(#_) {
+    max-height: 88dvh !important;
+  }
+}
+
+/* mobile composer: ONE row — an old rule stacked the textarea on its own
+   line with a toolbar row underneath, doubling the height */
+@media (max-width: 820px) {
+  body .composer:not(#_) textarea,
+  body .context-chat-host .composer:not(#_) textarea {
+    grid-row: 1 !important;
+    grid-column: 2 !important;
+  }
+  body .composer:not(#_) #attachButton { grid-row: 1 !important; grid-column: 1 !important; }
+  body .composer:not(#_) #emojiButton { grid-row: 1 !important; grid-column: 3 !important; }
+  body .composer:not(#_) #voiceMsgButton { grid-row: 1 !important; grid-column: 4 !important; }
+  body .composer:not(#_) #sendButton { grid-row: 1 !important; grid-column: 5 !important; }
+  body .composer:not(#_) .icon-button {
+    width: 38px !important;
+    min-width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+  }
+}
