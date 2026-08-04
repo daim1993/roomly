@@ -738,7 +738,7 @@ export class VoiceManager {
       policy 'all'; the second goes relay-only so unusable direct candidates
       stop crowding out the TURN path (VPNs, symmetric NAT, UDP-blocked).
       Local tracks live in this.localStream, so createPeer re-adds them. */
-  rebuildPeer(peer, { relayOnly = null, rebuilds = null } = {}) {
+  async rebuildPeer(peer, { relayOnly = null, rebuilds = null } = {}) {
     if (!this.active || this.peers.get(peer.connId) !== peer) {
       return;
     }
@@ -748,6 +748,18 @@ export class VoiceManager {
     try {
       console.info(`[rtc] rebuilding link ${peer.connId}${wantRelay ? ' (relay-only)' : ''}`);
     } catch {}
+    if (wantRelay && (!this.iceFetchedAt || Date.now() - this.iceFetchedAt > 90_000)) {
+      // The relay attempt is only as good as its TURN credentials — when the
+      // cached set is stale, grab a fresh one (bounded so recovery never
+      // stalls on a slow network; fresh creds skip this entirely).
+      await Promise.race([
+        this.refreshIce(),
+        new Promise((resolve) => setTimeout(resolve, 1200))
+      ]);
+      if (!this.active || this.peers.get(peer.connId) !== peer) {
+        return; // the mesh moved on while we fetched credentials
+      }
+    }
     // Tell the other side to rebuild too — both ends need a fresh transport.
     this.socket.push('signal', { target: peer.connId, payload: { rebuild: true } });
     const meta = peer.meta;

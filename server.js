@@ -41,60 +41,128 @@ const config = {
         credential: process.env.TURN_CREDENTIAL || ''
       });
     } else if (fetchedTurnServers) {
-      // Credentials fetched from a TURN REST API (e.g. a free Metered
-      // account) — geographically routed and guaranteed capacity.
+      // Short-lived TURN credentials fetched from a live provider (see
+      // refreshTurnServers below). Relay is what lets calls connect through
+      // VPNs, symmetric NATs, CGNAT mobile networks and strict firewalls.
       iceServers.push(...fetchedTurnServers);
-    } else if (process.env.TURN_DISABLE !== '1') {
-      // Zero-config fallback: the Open Relay community TURN uses the TURN
-      // REST credential scheme, so we mint short-lived credentials from the
-      // published shared secret right here. Relay is what lets calls
-      // connect through VPNs, symmetric NATs and strict firewalls — the
-      // TLS/TCP 443 variant passes almost anything. Best-effort community
-      // capacity: for production, set TURN_REST_API or TURN_URL.
-      const username = String(Math.floor(Date.now() / 1000) + 24 * 3600);
-      const credential = crypto.createHmac('sha1', 'openrelayprojectsecret')
-        .update(username).digest('base64');
-      iceServers.push({
-        urls: [
-          'turn:staticauth.openrelay.metered.ca:80',
-          'turn:staticauth.openrelay.metered.ca:443',
-          'turn:staticauth.openrelay.metered.ca:443?transport=tcp',
-          'turns:staticauth.openrelay.metered.ca:443?transport=tcp'
-        ],
-        username,
-        credential
-      });
     }
+    // NOTE: the old zero-config fallback (Open Relay community TURN) is gone
+    // on purpose — the service is dead. Minting credentials for a dead relay
+    // made every relay-dependent call hang on "Connecting" forever.
     return iceServers;
   }
 };
 
-// Optional: fetch ready-made TURN credentials from a REST endpoint (set
-// TURN_REST_API to e.g. https://<app>.metered.live/api/v1/turn/credentials?apiKey=KEY
-// from a free Metered account). Refreshed every 4 hours, cached in memory.
+// ---------------------------------------------------------------- TURN feed
+// Sources, in order of preference (first configured one wins):
+//   1. TURN_REST_API   — any endpoint returning [{urls,username,credential}]
+//                        (a free Metered account gives you exactly this).
+//   2. TURN_CF_KEY_ID + TURN_CF_API_TOKEN — official Cloudflare Realtime
+//                        TURN (free tier): credentials are generated from
+//                        your own key. See RENDER-TURN-SETUP.md.
+//   3. Zero-config stopgap — borrow the public Cloudflare speed-test TURN
+//                        credentials. Keeps calls relayable with no setup,
+//                        but it is best-effort and not meant for production:
+//                        create your own free key (option 2) when you can.
+// Refreshed every 20 minutes; served to clients via the hub 'ice' op, which
+// every client re-requests before joining or retrying a call.
 let fetchedTurnServers = null;
+let turnSource = null;
+const TURN_STOPGAP_URL = process.env.TURN_STOPGAP_URL || 'https://speed.cloudflare.com/turn-creds';
+
+function normalizeIceEntries(raw) {
+  const list = Array.isArray(raw) ? raw : [raw];
+  const out = [];
+  for (const entry of list) {
+    if (!entry || !entry.urls) {
+      continue;
+    }
+    const urls = (Array.isArray(entry.urls) ? entry.urls : [entry.urls])
+      .filter((url) => typeof url === 'string' && url.startsWith('turn'));
+    if (urls.length) {
+      out.push({ urls, username: entry.username || '', credential: entry.credential || '' });
+    }
+  }
+  return out;
+}
+
 async function refreshTurnServers() {
-  if (!process.env.TURN_REST_API) {
+  // 1 — explicit REST endpoint (Metered-style array)
+  if (process.env.TURN_REST_API) {
+    try {
+      const response = await fetch(process.env.TURN_REST_API);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const entries = normalizeIceEntries(await response.json());
+      if (entries.length) {
+        fetchedTurnServers = entries;
+        if (turnSource !== 'rest-api') {
+          console.log(`[turn] using TURN_REST_API credentials (${entries.length} entries)`);
+        }
+        turnSource = 'rest-api';
+        return;
+      }
+    } catch (error) {
+      console.error('[turn] TURN_REST_API refresh failed:', error.message);
+    }
+  }
+  // 2 — official Cloudflare Realtime TURN key (free tier)
+  if (process.env.TURN_CF_KEY_ID && process.env.TURN_CF_API_TOKEN) {
+    try {
+      const response = await fetch(
+        `https://rtc.live.cloudflare.com/v1/turn/keys/${process.env.TURN_CF_KEY_ID}/credentials/generate-ice-servers`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.TURN_CF_API_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ ttl: 4 * 3600 })
+        }
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const body = await response.json();
+      const entries = normalizeIceEntries(body.iceServers || body);
+      if (entries.length) {
+        fetchedTurnServers = entries;
+        if (turnSource !== 'cloudflare') {
+          console.log('[turn] using your Cloudflare Realtime TURN key');
+        }
+        turnSource = 'cloudflare';
+        return;
+      }
+    } catch (error) {
+      console.error('[turn] Cloudflare Realtime refresh failed:', error.message);
+    }
+  }
+  // 3 — zero-config stopgap
+  if (process.env.TURN_DISABLE === '1') {
     return;
   }
   try {
-    const response = await fetch(process.env.TURN_REST_API);
+    const response = await fetch(TURN_STOPGAP_URL, { headers: { 'Accept': 'application/json' } });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    const list = await response.json();
-    if (Array.isArray(list) && list.length) {
-      fetchedTurnServers = list.filter((entry) => entry && entry.urls);
-      console.log(`TURN credentials refreshed from API (${fetchedTurnServers.length} entries)`);
+    const entries = normalizeIceEntries(await response.json());
+    if (entries.length) {
+      fetchedTurnServers = entries;
+      if (turnSource !== 'stopgap') {
+        console.log('[turn] using the public Cloudflare speed-test TURN as a STOPGAP. ' +
+          'Calls will relay, but please claim your own free key: see RENDER-TURN-SETUP.md ' +
+          '(5 minutes, then set TURN_CF_KEY_ID + TURN_CF_API_TOKEN).');
+      }
+      turnSource = 'stopgap';
     }
   } catch (error) {
-    console.error('Could not refresh TURN credentials from TURN_REST_API:', error.message);
+    console.error('[turn] stopgap TURN refresh failed:', error.message);
   }
 }
-if (process.env.TURN_REST_API) {
-  refreshTurnServers();
-  setInterval(refreshTurnServers, 4 * 3600 * 1000).unref();
-}
+refreshTurnServers();
+setInterval(refreshTurnServers, 20 * 60 * 1000).unref();
 
 const store = new Store(config.dataDir);
 store.init();
@@ -630,6 +698,19 @@ const server = http.createServer(async (request, response) => {
           return;
         }
         await handleUpload(request, response);
+        return;
+      }
+      if (pathname === '/api/ice' && request.method === 'GET') {
+        // Deploy check: which STUN/TURN servers do clients get right now?
+        // Healthy = at least one turn: entry. Credentials are short-lived,
+        // so exposing them here is equivalent to what every client receives.
+        const servers = config.iceServers();
+        sendJson(response, 200, {
+          turn: servers.some((entry) =>
+            (Array.isArray(entry.urls) ? entry.urls : [entry.urls]).some((url) => String(url).startsWith('turn'))),
+          source: turnSource || (process.env.TURN_URL ? 'turn-url' : 'none'),
+          iceServers: servers
+        });
         return;
       }
       await handleAuthRoute(request, response, pathname);
