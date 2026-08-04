@@ -272,9 +272,11 @@ export class VoiceManager {
       }
     }
 
-    // Fresh short-lived TURN credentials before any RTCPeerConnection exists
-    // (snapshot creds could be hours old in a long-lived tab).
-    await this.refreshIce();
+    // Fresh short-lived TURN credentials — but never make the user wait for
+    // them. warmIce() is usually already resolved (prejoin prewarms it);
+    // otherwise we give the network 300ms and join with the cached list.
+    const iceReady = this.warmIce();
+    await Promise.race([iceReady, new Promise((resolve) => setTimeout(resolve, 300))]);
 
     const ack = await this.socket.request('voice-join', {
       channelKey,
@@ -483,6 +485,7 @@ export class VoiceManager {
           parts.set('useinbandfec', '1');
           parts.set('maxaveragebitrate', '40000');
           parts.set('stereo', '0');
+          parts.set('minptime', '10'); // 10ms Opus frames: less buffering per hop
           const rebuilt = Array.from(parts.entries())
             .map(([key, value]) => (value === undefined ? key : `${key}=${value}`))
             .join(';');
@@ -583,6 +586,18 @@ export class VoiceManager {
         this.classifyStream(peer, stream);
         stream.addEventListener('removetrack', () => this.onUpdate());
       }
+      // Play voice as close to live as the browser allows: no elective
+      // jitter-buffer padding on audio (the buffer still grows on real loss).
+      try {
+        if (event.receiver && event.track.kind === 'audio') {
+          if ('jitterBufferTarget' in event.receiver) {
+            event.receiver.jitterBufferTarget = 0;
+          }
+          if ('playoutDelayHint' in event.receiver) {
+            event.receiver.playoutDelayHint = 0;
+          }
+        }
+      } catch {}
       event.track.addEventListener('unmute', () => this.onUpdate());
       event.track.addEventListener('ended', () => this.onUpdate());
       this.onUpdate();
@@ -591,6 +606,7 @@ export class VoiceManager {
     pc.addEventListener('connectionstatechange', () => {
       peer.connected = pc.connectionState === 'connected';
       if (pc.connectionState === 'connected') {
+        clearTimeout(peer.fastKick);
         peer.iceRestarts = 0; // healthy again — reset the watchdog budget
         peer.connState = 'connected';
         clearTimeout(peer.stableTimer);
@@ -605,14 +621,15 @@ export class VoiceManager {
         this.kickIce(peer, 'failed');
       }
       if (pc.connectionState === 'disconnected') {
-        // Transient blips (VPN reroutes, wifi handoff): give it a moment,
+        // Transient blips (VPN reroutes, wifi handoff): give it a beat,
         // then force a fresh candidate hunt instead of hanging forever.
         setTimeout(() => {
           if (this.peers.get(peer.connId) === peer &&
               pc.connectionState === 'disconnected') {
+            peer.iceRestarts = Math.max(0, peer.iceRestarts - 1); // free kick
             this.kickIce(peer, 'disconnected');
           }
-        }, 3000);
+        }, 1500);
       }
       this.onUpdate();
     });
@@ -631,6 +648,18 @@ export class VoiceManager {
         this.kickIce(peer, 'watchdog');
       }
     }, 12000);
+
+    // Fast-start: most healthy paths connect in ~1-2s. If this one hasn't
+    // by 4s, a free early ICE restart hunts new candidates immediately
+    // instead of letting the user stare at "Connecting" until the 12s
+    // watchdog. Costs nothing on links that were about to make it anyway.
+    peer.fastKick = setTimeout(() => {
+      if (this.peers.get(peer.connId) === peer && !peer.failed &&
+          pc.signalingState !== 'closed' && pc.connectionState !== 'connected') {
+        peer.iceRestarts = Math.max(0, peer.iceRestarts - 1); // free kick
+        this.kickIce(peer, 'fast-start');
+      }
+    }, 4000);
 
     this.sendMeta(peer);
     return peer;
@@ -746,8 +775,23 @@ export class VoiceManager {
       const ack = await this.socket.request('ice', {}, 4000);
       if (ack && Array.isArray(ack.iceServers) && ack.iceServers.length) {
         this.iceServers = ack.iceServers;
+        this.iceFetchedAt = Date.now();
       }
     } catch {}
+  }
+
+  /** Stale-while-revalidate credential warmup. Creds younger than 2 minutes
+      are used as-is; otherwise one refresh runs (shared across callers).
+      The prejoin screen calls this, so by the time the user presses Join
+      the TURN credentials are already warm and the join is instant. */
+  warmIce() {
+    if (this.iceFetchedAt && Date.now() - this.iceFetchedAt < 120_000) {
+      return Promise.resolve();
+    }
+    if (!this._icePending) {
+      this._icePending = this.refreshIce().finally(() => { this._icePending = null; });
+    }
+    return this._icePending;
   }
 
   /** Observability: record which path actually carries media (host / srflx /
@@ -778,15 +822,20 @@ export class VoiceManager {
       peer.path = {
         local: local.candidateType || '?',
         remote: remote.candidateType || '?',
-        protocol: local.relayProtocol || local.protocol || '?'
+        protocol: local.relayProtocol || local.protocol || '?',
+        rttMs: typeof pair.currentRoundTripTime === 'number'
+          ? Math.round(pair.currentRoundTripTime * 1000)
+          : null
       };
-      console.info(`[rtc] ${peer.connId} connected via ${peer.path.local}/${peer.path.protocol} -> ${peer.path.remote}${peer.relayOnly ? ' (relay-only)' : ''}`);
+      const rtt = peer.path.rttMs === null ? '' : ` (${peer.path.rttMs}ms rtt)`;
+      console.info(`[rtc] ${peer.connId} connected via ${peer.path.local}/${peer.path.protocol} -> ${peer.path.remote}${rtt}${peer.relayOnly ? ' (relay-only)' : ''}`);
     } catch {}
   }
 
   destroyPeer(peer, removeFromMap) {
     clearInterval(peer.watchdog);
     clearTimeout(peer.stableTimer);
+    clearTimeout(peer.fastKick);
     try {
       peer.pc.close();
     } catch {}

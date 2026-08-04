@@ -2658,6 +2658,9 @@ function renderVoiceView() {
   ui.voiceStage.hidden = !joinedHere;
 
   if (!joinedHere) {
+    // Prewarm short-lived TURN credentials while the user reads the prejoin
+    // card — pressing Join then connects with zero credential round-trip.
+    voice.warmIce();
     ui.voicePrejoinTitle.textContent = channel.name;
     ui.voicePrejoinCount.textContent = participants.length
       ? `${participants.length} ${participants.length === 1 ? 'person is' : 'people are'} here (limit ${state.voiceLimit})`
