@@ -68,6 +68,7 @@ const config = {
 // every client re-requests before joining or retrying a call.
 let fetchedTurnServers = null;
 let turnSource = null;
+let turnLastError = null;
 const TURN_STOPGAP_URL = process.env.TURN_STOPGAP_URL || 'https://speed.cloudflare.com/turn-creds';
 
 function normalizeIceEntries(raw) {
@@ -97,6 +98,7 @@ async function refreshTurnServers() {
       const entries = normalizeIceEntries(await response.json());
       if (entries.length) {
         fetchedTurnServers = entries;
+        turnLastError = null;
         if (turnSource !== 'rest-api') {
           console.log(`[turn] using TURN_REST_API credentials (${entries.length} entries)`);
         }
@@ -104,6 +106,7 @@ async function refreshTurnServers() {
         return;
       }
     } catch (error) {
+      turnLastError = `rest-api: ${error.message}`;
       console.error('[turn] TURN_REST_API refresh failed:', error.message);
     }
   }
@@ -128,6 +131,7 @@ async function refreshTurnServers() {
       const entries = normalizeIceEntries(body.iceServers || body);
       if (entries.length) {
         fetchedTurnServers = entries;
+        turnLastError = null;
         if (turnSource !== 'cloudflare') {
           console.log('[turn] using your Cloudflare Realtime TURN key');
         }
@@ -135,6 +139,7 @@ async function refreshTurnServers() {
         return;
       }
     } catch (error) {
+      turnLastError = `cloudflare: ${error.message}`;
       console.error('[turn] Cloudflare Realtime refresh failed:', error.message);
     }
   }
@@ -143,26 +148,56 @@ async function refreshTurnServers() {
     return;
   }
   try {
-    const response = await fetch(TURN_STOPGAP_URL, { headers: { 'Accept': 'application/json' } });
+    // The speed-test endpoint sits behind bot protection: a bare server
+    // fetch gets challenged, so present ordinary browser headers.
+    const response = await fetch(TURN_STOPGAP_URL, {
+      headers: {
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+          '(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        'Referer': 'https://speed.cloudflare.com/'
+      }
+    });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    const entries = normalizeIceEntries(await response.json());
+    const text = await response.text();
+    let body;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      throw new Error(`non-JSON response (${text.slice(0, 60).replace(/\s+/g, ' ')})`);
+    }
+    const entries = normalizeIceEntries(body);
     if (entries.length) {
       fetchedTurnServers = entries;
+      turnLastError = null;
       if (turnSource !== 'stopgap') {
         console.log('[turn] using the public Cloudflare speed-test TURN as a STOPGAP. ' +
           'Calls will relay, but please claim your own free key: see RENDER-TURN-SETUP.md ' +
           '(5 minutes, then set TURN_CF_KEY_ID + TURN_CF_API_TOKEN).');
       }
       turnSource = 'stopgap';
+    } else {
+      throw new Error('no turn: URLs in response');
     }
   } catch (error) {
+    turnLastError = `stopgap: ${error.message}`;
     console.error('[turn] stopgap TURN refresh failed:', error.message);
   }
 }
 refreshTurnServers();
-setInterval(refreshTurnServers, 20 * 60 * 1000).unref();
+// No relay yet -> keep retrying every 3 minutes; healthy -> refresh creds
+// every 20 minutes so clients always receive a live set.
+setInterval(() => {
+  refreshTurnServers();
+}, 20 * 60 * 1000).unref();
+setInterval(() => {
+  if (!fetchedTurnServers) {
+    refreshTurnServers();
+  }
+}, 3 * 60 * 1000).unref();
 
 const store = new Store(config.dataDir);
 store.init();
@@ -709,6 +744,7 @@ const server = http.createServer(async (request, response) => {
           turn: servers.some((entry) =>
             (Array.isArray(entry.urls) ? entry.urls : [entry.urls]).some((url) => String(url).startsWith('turn'))),
           source: turnSource || (process.env.TURN_URL ? 'turn-url' : 'none'),
+          lastError: turnLastError,
           iceServers: servers
         });
         return;
