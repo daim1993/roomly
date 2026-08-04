@@ -7574,3 +7574,226 @@ body #appView .home-call-action:not(#_) {
     min-height: 0 !important;
   }
 }
+
+/* ================================================================== *
+ *  ELEVATION — the craft pass                                         *
+ *  One motion system, layered depth, print-shop details. Everything   *
+ *  moves with the same spring, presses with the same weight, and      *
+ *  rests with the same shadow. Reduced-motion users get stillness.    *
+ * ================================================================== */
+
+:root {
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-tap: 130ms;
+  --dur-move: 240ms;
+  --dur-enter: 420ms;
+  --shadow-rest: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 8px 26px rgba(0, 0, 0, 0.38);
+  --shadow-lift: 0 1px 0 rgba(255, 255, 255, 0.07) inset, 0 18px 44px rgba(0, 0, 0, 0.5);
+  --shadow-float: 0 30px 80px rgba(0, 0, 0, 0.62);
+}
+
+/* the page is printed matter: yellow selection ink, yellow caret */
+body ::selection { background: rgba(245, 205, 47, 0.85); color: var(--st-black); }
+body :is(input, textarea) { caret-color: var(--st-yellow); }
+
+/* film grain over the black canvas — barely there, everywhere */
+#appView::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+/* one scrollbar voice across the app */
+body *::-webkit-scrollbar { width: 9px; height: 9px; }
+body *::-webkit-scrollbar-track { background: transparent; }
+body *::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: #2E2C26;
+  background-clip: padding-box;
+}
+body *::-webkit-scrollbar-thumb:hover { background-color: #45412F; background-clip: padding-box; }
+
+/* ---- interaction physics: one spring for every control ------------ */
+body :is(button, [role="button"], .rail-item, .channel-item, .dm-item,
+  .messages-row, .product-nav-item, .mnav-item, .home-card-item) {
+  transition:
+    transform var(--dur-tap) var(--ease-out),
+    background-color var(--dur-tap) var(--ease-out),
+    border-color var(--dur-tap) var(--ease-out),
+    color var(--dur-tap) var(--ease-out),
+    box-shadow var(--dur-move) var(--ease-out) !important;
+}
+/* presses feel weighted, not crushed (an old rule squashed to 0.9) */
+body :is(.icon-button, .v-control, .dock-control):not(#_):active {
+  transform: scale(0.95) !important;
+  box-shadow: none !important;
+}
+body :is(.primary-button, .side-add-main, .ghost-button, .side-add-sub,
+  #voiceJoinButton, .home-call-action, .messages-head .primary-button):not(#_):active {
+  transform: translateY(1px) scale(0.985) !important;
+}
+
+/* dark CTAs glow faintly yellow on hover — ink meeting highlighter */
+body :is(.primary-button, .side-add-main, #voiceJoinButton,
+  .messages-head .primary-button):not(#_):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(245, 205, 47, 0.18) !important;
+}
+body .ghost-button:not(#_):hover {
+  transform: translateY(-1px);
+}
+
+/* bento cards rise to meet the cursor; their sticker marks tilt */
+body #appView :is(.home-call-card, .home-live-panel, .home-recent-panel, .home-card-item):not(#_) {
+  box-shadow: var(--shadow-rest) !important;
+  transition: transform var(--dur-move) var(--ease-out), box-shadow var(--dur-move) var(--ease-out) !important;
+}
+body #appView :is(.home-call-card, .home-live-panel, .home-recent-panel, .home-card-item):not(#_):hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift) !important;
+}
+body #appView .home-card-item:not(#_):hover .hc-arrow { transform: rotate(-8deg) translateX(2px); }
+body #appView .hc-arrow { transition: transform var(--dur-move) var(--ease-spring); }
+
+/* list rows nudge right, never jump */
+body #appView :is(.rail-item, .channel-item, .dm-item, .messages-row):not(.is-active):hover {
+  transform: translateX(2px);
+}
+
+/* ---- entrances ----------------------------------------------------- */
+@keyframes el-pop-in {
+  from { transform: translateY(10px) scale(0.965); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes el-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+body .modal-root .modal-card:not(#_) {
+  animation: el-pop-in var(--dur-enter) var(--ease-spring) both;
+  box-shadow: var(--shadow-float) !important;
+}
+body .modal-root::before { animation: el-fade-in var(--dur-move) var(--ease-out) both; }
+body :is(.popover, .emoji-popup, .mention-popup):not(#_) {
+  animation: el-pop-in 260ms var(--ease-spring) both;
+  box-shadow: var(--shadow-float) !important;
+}
+body .auth-card:not(#_) { animation: el-pop-in 520ms var(--ease-spring) both; }
+body #appView .voice-prejoin > div:not(#_) { animation: el-pop-in var(--dur-enter) var(--ease-spring) both; }
+
+/* voice tiles pop once, when they are born (tiles persist across renders) */
+@keyframes el-tile-in {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+body #appView .voice-tile:not(#_) { animation: el-tile-in var(--dur-enter) var(--ease-spring) both; }
+
+/* ---- the call is the hero ----------------------------------------- */
+/* speaking: the sage ring breathes with the voice */
+@keyframes el-speak-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--st-black), 0 0 0 6px var(--st-sage); }
+  50% { box-shadow: 0 0 0 3px var(--st-black), 0 0 0 8px var(--st-sage); }
+}
+body #appView .voice-tile.is-speaking:not(#_):not(.is-pinned) {
+  animation: el-speak-pulse 1.5s var(--ease-out) infinite;
+}
+/* leave holds a slow coral heartbeat so it is findable without looking */
+@keyframes el-leave-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229, 112, 72, 0); }
+  50% { box-shadow: 0 0 0 7px rgba(229, 112, 72, 0.18); }
+}
+body #appView .voice-controls > .v-control.leave:not(#_) {
+  animation: el-leave-breathe 3.2s ease-in-out infinite;
+}
+body #appView .voice-controls > .v-control.leave:not(#_):hover {
+  animation: none;
+  background: #F08055 !important;
+  transform: translateY(-1px);
+}
+body .voice-dock .dock-control:not(#_):hover { transform: scale(1.07); }
+body .voice-dock .icon-button.danger:not(#_):hover { transform: scale(1.07); background: #F08055 !important; }
+
+/* while a link hunts for a path, its badge shimmers instead of sitting dead */
+@keyframes el-conn-sheen {
+  from { background-position: -80px 0; }
+  to { background-position: 140px 0; }
+}
+body .voice-tile:not(.is-connected) .voice-tile-conn:not(#_) {
+  background-image: linear-gradient(100deg, transparent 30%, rgba(0, 0, 0, 0.14) 50%, transparent 70%) !important;
+  background-size: 220px 100% !important;
+  background-repeat: no-repeat !important;
+  animation: el-conn-sheen 1.4s linear infinite;
+}
+
+/* ---- print-shop details ------------------------------------------- */
+/* name pills and chips carry a pressed-ink inner line */
+body #appView :is(.voice-tile-name, .screen-label):not(#_) {
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12), 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+}
+/* the prejoin card gets a corner barcode, like every good sticker sheet */
+body #appView .voice-prejoin > div:not(#_) { position: relative !important; }
+body #appView .voice-prejoin > div::after {
+  content: "";
+  position: absolute;
+  right: 22px;
+  bottom: 18px;
+  width: 54px;
+  height: 16px;
+  opacity: 0.6;
+  background: repeating-linear-gradient(90deg,
+    var(--st-card-ink) 0 2px, transparent 2px 4px,
+    var(--st-card-ink) 4px 5px, transparent 5px 8px,
+    var(--st-card-ink) 8px 11px, transparent 11px 13px);
+}
+/* timers, counters and badges align their digits like a ledger */
+body :is(.call-timer, .vn-time, .mr-time, .msg-time, .pill-chip, .mnav-badge,
+  .rail-badge, .product-nav-badge, .messages-head small) {
+  font-variant-numeric: tabular-nums !important;
+}
+/* display headlines break like posters, not paragraphs */
+body :is(.auth-copy h1, .home-intro h2, .messages-head-text h2, .splash-card h1) {
+  text-wrap: balance;
+}
+
+/* ---- toast: a little black sticker, not a grey bar ----------------- */
+body .toast:not(#_) {
+  padding: 12px 22px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: var(--st-cream) !important;
+  color: var(--st-card-ink) !important;
+  font-family: var(--sk-mono) !important;
+  font-size: 0.8125rem !important;
+  font-weight: 700 !important;
+  box-shadow: var(--shadow-float) !important;
+  animation: el-pop-in 320ms var(--ease-spring) both !important;
+}
+body .toast.is-error:not(#_) {
+  background: var(--st-coral) !important;
+  color: var(--st-black) !important;
+}
+
+/* composer lifts slightly while you type */
+body .composer:not(#_):focus-within { transform: translateY(-1px); }
+body .composer:not(#_) { transition: transform var(--dur-tap) var(--ease-out), box-shadow var(--dur-tap) var(--ease-out) !important; }
+
+/* message hover: actions glide in instead of blinking */
+body #appView .msg .msg-actions:not(#_) {
+  transition: opacity var(--dur-tap) var(--ease-out), transform var(--dur-tap) var(--ease-out);
+}
+
+/* ---- stillness for those who ask for it --------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  body *, body *::before, body *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  #appView::after { display: none; }
+}
